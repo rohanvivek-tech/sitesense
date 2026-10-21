@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SiteSense</title>
+  <meta name="description" content="SiteSense helps commercial real estate developers learn from past construction costs, benchmark future projects against comparable completed developments, and make better-informed budget decisions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23173D35'/%3E%3Cpath d='M22 9H10v7h12' stroke='%23F6F4EE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3Cpath d='M22 16v7H10' stroke='%23C7A66A' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+</head>
+<body>
+  <a class="skip" href="#main-content">Skip to content</a>
+
+  <!-- Landing -->
+  <div id="landing-shell" hidden>
+    <header class="l-nav" id="landing-nav">
+      <div class="l-wrap l-nav-inner">
+        <a class="brand" href="#/" aria-label="SiteSense home">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg>
+          <span>SiteSense</span>
+        </a>
+        <nav class="l-links" id="landing-links" aria-label="Main">
+          <button data-action="scroll" data-target="features">Features</button>
+          <button data-action="scroll" data-target="how">How it works</button>
+          <button data-action="scroll" data-target="principles">Principles</button>
+          <a href="#/about">Methodology</a>
+        </nav>
+        <div class="l-nav-cta"><a class="btn btn-quiet btn-sm" href="#/projects">Open app</a><a class="btn btn-primary btn-sm" href="#/overview">Explore SiteSense</a></div>
+        <button class="nav-toggle" id="landing-toggle" data-action="landing-menu" aria-expanded="false" aria-controls="landing-links" aria-label="Menu"><span></span><span></span></button>
+      </div>
+    </header>
+    <main id="landing" tabindex="-1"></main>
+    <footer class="l-foot">
+      <div class="l-wrap l-foot-inner">
+        <span class="brand brand-sm"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg><span>SiteSense</span></span>
+        <span class="tiny subtle">Results are indicative and based on the data and assumptions you provide. Not financial advice.</span>
+        <a class="tiny subtle" href="#/about">Methodology</a>
+      </div>
+    </footer>
+  </div>
+
+  <!-- App -->
+  <div id="app-shell" class="app" hidden>
+    <aside class="sidebar" id="sidebar" aria-label="Product navigation">
+      <a class="brand side-brand" href="#/" aria-label="SiteSense home">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg>
+        <span>SiteSense</span>
+      </a>
+      <nav class="side-nav">
+        <a href="#/overview" data-nav="overview">Overview</a>
+        <a href="#/projects" data-nav="projects">Projects</a>
+        <a href="#/benchmarks" data-nav="benchmarks">Benchmarks</a>
+        <a href="#/insights" data-nav="insights">Variance insights</a>
+        <a href="#/import" data-nav="import">Data imports</a>
+        <span class="side-sep" aria-hidden="true"></span>
+        <a href="#/settings" data-nav="settings">Settings</a>
+        <a href="#/about" data-nav="about">Methodology</a>
+      </nav>
+      <div class="side-foot"><a class="btn btn-primary btn-sm btn-block" href="#/projects/new">New project</a><p class="tiny subtle">Data is stored in this browser.</p></div>
+    </aside>
+    <div class="app-main">
+      <header class="topbar">
+        <button class="nav-toggle" id="menu-toggle" data-action="menu" aria-expanded="false" aria-controls="sidebar" aria-label="Menu"><span></span><span></span></button>
+        <a class="brand" href="#/" aria-label="SiteSense home"><svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg><span>SiteSense</span></a>
+        <a class="btn btn-primary btn-sm" href="#/projects/new">New project</a>
+      </header>
+      <div id="demo-banner" class="demo-banner" hidden></div>
+      <main id="main-content" tabindex="-1"><div id="view" class="app-wrap"></div></main>
+    </div>
+    <div class="scrim" data-action="menu" aria-hidden="true"></div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="print-root" class="print-root"></div>
+
+  <script src="js/model.js"></script>
+  <script src="js/costs.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/import.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/views/feasibility.js"></script>
+  <script src="js/views/workspace.js"></script>
+  <script src="js/views/project.js"></script>
+  <script src="js/views/costimport.js"></script>
+  <script src="js/views/landing.js"></script>
+</body>
+</html>

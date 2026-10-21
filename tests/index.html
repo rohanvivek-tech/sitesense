@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SiteSense tests</title>
+  <style>
+    body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; background: #F6F4EE; color: #202824; }
+    h1 { font-size: 20px; } .pass { color: #477565; } .fail { color: #9E3A2F; font-weight: 600; }
+    li { margin: 2px 0; } #summary { font-size: 16px; font-weight: 600; margin: 12px 0; }
+    code { background: #fff; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>SiteSense logic tests</h1>
+  <p>Runs in the browser against the same scripts the app uses. No data is saved.</p>
+  <div id="summary">Running…</div>
+  <ol id="results"></ol>
+
+  <script src="../js/model.js"></script>
+  <script src="../js/costs.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/demo.js"></script>
+  <script src="../js/import.js"></script>
+  <script>
+  const results = [];
+  const near = (a, b, tol = 1e-6) => Math.abs(a - b) <= tol;
+  function test(name, fn) {
+    try { const r = fn(); if (r && r.then) return r.then(() => results.push([name, true]), e => results.push([name, false, e.message])); results.push([name, true]); }
+    catch (e) { results.push([name, false, e.message]); }
+  }
+  function eq(a, b, msg) { if (!(a === b || (typeof a === 'number' && typeof b === 'number' && near(a, b)))) throw new Error(`${msg || ''} expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+  function ok(v, msg) { if (!v) throw new Error(msg || 'expected truthy'); }
+
+  const proj = (status, lines, meta = {}) => ({ id: Math.random().toString(36).slice(2), meta: { name: 'T', status, developmentType: 'Grade-A office', location: 'Whitefield, Bengaluru', areaSqft: 100000, priceBasisYear: 2024, ...meta }, costLines: lines, assumptions: {} });
+  const line = (category, estimate, actual, extra = {}) => ({ id: Math.random().toString(36).slice(2), category, estimate, actual, revised: null, committed: null, forecast: null, complete: null, reason: null, ...extra });
+
+  (async () => {
+  // ---------- variance ----------
+  test('Variance = actual − estimate, % = variance ÷ estimate', () => {
+    const p = proj('completed', [line('mep', 100, 110)]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.variance, 10); eq(r.pct, 0.1); eq(r.status, 'over'); eq(r.basis, 'final');
+  });
+  test('Under-spend is within budget with negative variance', () => {
+    const p = proj('completed', [line('mep', 100, 95)]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.variance, -5); eq(r.status, 'within');
+  });
+  test('Zero estimate with spend is flagged for review, not an overrun', () => {
+    const p = proj('completed', [line('mep', 0, 5)]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.status, 'review'); eq(r.pct, null);
+  });
+  test('Missing estimate with spend is flagged for review', () => {
+    const p = proj('completed', [line('mep', null, 5)]);
+    eq(analyseLine(p.costLines[0], p).status, 'review');
+  });
+  test('In-progress actual without forecast is insufficient, not a variance', () => {
+    const p = proj('active', [line('mep', 100, 50)]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.status, 'insufficient'); eq(r.variance, null);
+    ok(/50% of estimate spent/.test(r.note), r.note);
+  });
+  test('In-progress spend above estimate is "over so far" (minimum), never a final variance', () => {
+    const p = proj('active', [line('mep', 100, 112)]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.status, 'overspent'); eq(r.variance, 12); eq(r.outturn, null);
+    const a = analyseProject(p); eq(a.finalCost, null); eq(a.over.length, 0); eq(a.overspent.length, 1);
+    ok(!insights([proj('completed', [line('mep', 100, 110)]), p], { includeForecasts: true }).cats.find(c => c.key === 'mep' && c.n === 2), 'not used in insights');
+  });
+  test('In-progress line uses the forecast final cost when recorded', () => {
+    const p = proj('active', [line('mep', 100, 50, { forecast: 108 })]);
+    const r = analyseLine(p.costLines[0], p);
+    eq(r.basis, 'forecast'); eq(r.variance, 8); eq(r.status, 'over');
+  });
+  test('Line marked complete in an active project uses actual as final', () => {
+    const p = proj('active', [line('mep', 100, 103, { complete: true })]);
+    eq(analyseLine(p.costLines[0], p).basis, 'final');
+  });
+  test('Expected final cost only when every estimated category has a final or forecast', () => {
+    const p = proj('active', [line('mep', 100, 103, { complete: true }), line('facade', 50, 10)]);
+    const a = analyseProject(p);
+    eq(a.finalCost, null); eq(a.coverage.covered, 1); eq(a.coverage.withEstimate, 2);
+    p.costLines[1].forecast = 55;
+    const b = analyseProject(p);
+    eq(b.finalCost, 158); eq(b.variance, 8); ok(!b.allFinal, 'includes a forecast');
+  });
+  test('Totals ignore missing values instead of treating them as zero', () => {
+    const p = proj('completed', [line('mep', 100, 110), line('facade', null, null)]);
+    const a = analyseProject(p);
+    eq(a.estimate, 100); eq(a.actual, 110); eq(a.coverage.withEstimate, 1);
+  });
+  test('Revised total uses original where no revision exists', () => {
+    const p = proj('completed', [line('mep', 100, 110, { revised: 105 }), line('facade', 50, 50)]);
+    eq(analyseProject(p).revised, 155);
+  });
+
+  // ---------- insights ----------
+  test('Insights need two completed projects with data', () => {
+    const ins = insights([proj('completed', [line('mep', 100, 110)])]);
+    ok(!ins.enough);
+  });
+  test('Recurring overrun needs ≥2 projects over and ≥50% of those recording it', () => {
+    const ps = [proj('completed', [line('mep', 100, 110)]), proj('completed', [line('mep', 100, 120)]), proj('completed', [line('mep', 100, 90)])];
+    const c = insights(ps).cats.find(x => x.key === 'mep');
+    eq(c.n, 3); eq(c.overN, 2); ok(c.recurring); eq(c.median, 0.1);
+  });
+  test('Zero-estimate lines are excluded from insights and reasons', () => {
+    const ps = [proj('completed', [line('mep', 0, 10, { reason: { cause: 'design', status: 'confirmed' } })]), proj('completed', [line('mep', 100, 110)])];
+    const ins = insights(ps);
+    eq(ins.cats.find(x => x.key === 'mep').n, 1);
+    ok(!ins.causes.find(c => c.key === 'design'), 'design reason should not be counted');
+  });
+  test('Active projects are excluded from insights unless forecasts are included', () => {
+    const ps = [proj('completed', [line('mep', 100, 110)]), proj('active', [line('mep', 100, 50, { forecast: 120 })])];
+    eq(insights(ps).projectsWithData, 1);
+    eq(insights(ps, { includeForecasts: true }).projectsWithData, 2);
+  });
+
+  // ---------- parsing ----------
+  test('Amount parsing handles Indian formats, units and negatives', () => {
+    eq(parseAmount('1,23,45,678', 'rupees').value, 1.2345678);
+    eq(parseAmount('₹ 12.5 Cr', 'rupees').value, 12.5);
+    eq(parseAmount('50 lakh', 'cr').value, 0.5);
+    eq(parseAmount('(2.5)', 'cr').value, -2.5);
+    eq(parseAmount(250, 'lakh').value, 2.5);
+    eq(parseAmount(30000000, 'rupees').value, 3);
+  });
+  test('Blank, dash and NA are missing (null), not zero', () => {
+    eq(parseAmount('', 'cr').value, null); eq(parseAmount('-', 'cr').value, null); eq(parseAmount('NA', 'cr').value, null); eq(parseAmount(null, 'cr').value, null);
+  });
+  test('Invalid text is an error and keeps the raw value', () => {
+    const r = parseAmount('approx 12', 'cr');
+    eq(r.value, null); ok(r.error); eq(r.raw, 'approx 12');
+  });
+  test('Category standardisation', () => {
+    eq(suggestCategory('RCC works').key, 'superstructure');
+    eq(suggestCategory('HVAC & Electrical').key, 'mep');
+    eq(suggestCategory('Façade glazing').key, 'facade');
+    eq(suggestCategory('Prelims').key, 'prelims');
+    eq(suggestCategory('Xyz unknown').key, null);
+  });
+  test('Cause suggestion from free text', () => {
+    eq(suggestCause('Steel price escalation'), 'material');
+    eq(suggestCause('Programme delay due to monsoon'), 'delay');
+    eq(suggestCause(''), null);
+  });
+  test('Column mapping guesses from headers', () => {
+    const m = guessMapping(['Project', 'Cost Head', 'Original Budget (Rs Cr)', 'Revised Budget', 'Actual Cost to Date', 'EAC', 'Remarks']);
+    eq(m.project, 0); eq(m.category, 1); eq(m.estimate, 2); eq(m.revised, 3); eq(m.actual, 4); eq(m.forecast, 5); eq(m.reason, 6); eq(m.committed, null);
+  });
+  test('Header row detection skips title rows', () => {
+    const rows = [['ABC Developers cost report'], [], ['Cost category', 'Estimate', 'Actual'], ['MEP', 10, 11]];
+    eq(detectHeaderRow(rows), 2);
+  });
+  test('Unit guess from magnitude', () => {
+    const rows = [['Category', 'Estimate'], ['A', 120000000], ['B', 340000000]];
+    eq(guessUnit(rows, 0, { estimate: 1 }), 'rupees');
+    eq(guessUnit([['Category', 'Estimate'], ['A', 12], ['B', 34]], 0, { estimate: 1 }), 'cr');
+  });
+  test('Rows: totals excluded by default, duplicates flagged, invalid values flagged', () => {
+    const sheet = { rows: [['Category', 'Estimate', 'Actual'], ['MEP', 10, 11], ['MEP', 10, 11], ['Facade', 'abc', 5], ['', 3, 3], ['Total', 23, 19]] };
+    const rows = buildCostRows(sheet, 0, { project: null, category: 0, estimate: 1, revised: null, committed: null, actual: 2, forecast: null, period: null, reason: null, complete: null }, 'cr');
+    eq(rows.length, 5, 'no row silently dropped');
+    ok(!rows[1].include && rows[1].duplicateOf === 2, 'exact duplicate excluded but kept in list');
+    ok(rows[2].errors.length && rows[2].values.estimate === null, 'invalid estimate is null with error');
+    ok(rows[3].errors.includes('No cost category'));
+    ok(rows[4].isTotal && !rows[4].include, 'total row excluded by default');
+  });
+
+  // ---------- profitability ----------
+  const A = { ...SAMPLE_ASSUMPTIONS };
+  test('Sample feasibility unchanged: equity IRR 17.3%', () => { eq(Math.round(baseline(A).irr * 1000) / 10, 17.3); });
+  test('Profit = revenue − total project cost', () => { const r = baseline(A); ok(near(r.profit, r.revenue - r.devCost, 1e-9)); });
+  test('Profit margin = profit ÷ revenue; return on cost = profit ÷ cost', () => { const r = baseline(A); ok(near(r.margin, r.profit / r.revenue)); ok(near(r.roi, r.profit / r.devCost)); ok(!near(r.margin, r.roi), 'margin and ROI differ'); });
+  test('Scenario: construction +10% raises cost and lowers profit', () => { const b = baseline(A), s = runModel(A, { cons: 10, commit: 'pre' }); ok(s.devCost > b.devCost); ok(s.profit < b.profit); ok(near(s.construction, b.construction * 1.1, 1e-6)); });
+  test('Scenario: rent −10% lowers revenue, not cost', () => { const b = baseline(A), s = runModel(A, { rentChg: -10, commit: 'pre' }); ok(s.revenue < b.revenue); ok(near(s.total, b.total)); });
+  test('Scenario: interest +1.5 pts raises finance cost only', () => { const b = baseline(A), s = runModel(A, { rateChg: 1.5, commit: 'pre' }); ok(s.interest > b.interest); ok(near(s.total, b.total)); ok(near(s.exitValue, b.exitValue)); });
+  test('Scenario: delay moves completion and adds overheads', () => { const b = baseline(A), s = runModel(A, { delay: 6, commit: 'pre' }); eq(s.completion, b.completion + 6); ok(near(s.lines.overheads, 6 * A.overheadPerMonth)); });
+  test('Existing re-forecast inputs (steel/cement/labour) still work', () => { const s = runModel(A, { steel: 18, cement: 10, labour: 8, delay: 4, commit: 'milestone', milestone: 9 }); eq(Math.round(s.irr * 1000) / 10, 12.0); });
+
+  // ---------- benchmarking ----------
+  const demo = buildDemoWorkspace();
+  const target = demo.find(p => p.meta.status === 'proposed');
+  const cands = candidateBenchmarks(target, demo);
+  const auto = cands.filter(c => c.autoInclude).map(c => c.project.meta.name);
+  test('Comparable projects: same type, similar size, enough data', () => {
+    ok(auto.some(n => n.includes('Tech Park A')) && auto.some(n => n.includes('Office Block B')) && auto.some(n => n.includes('Office Tower E')), auto.join(', '));
+    ok(!auto.some(n => n.includes('IT Campus C')), 'C is 2.5× larger');
+    ok(!auto.some(n => n.includes('Retail Mall D')), 'D is a different type');
+    ok(!auto.some(n => n.includes('Proposed')), 'target excluded');
+  });
+  test('Benchmark reference = median final ₹/sq ft × proposed area', () => {
+    const refs = categoryReferences(target, selectedBenchmarks(target, cands));
+    const s = refs.superstructure;
+    eq(s.n, 3);
+    const psfs = s.pts.filter(x => !x.partial).map(x => x.outPsf).sort((a, b) => a - b);
+    ok(near(s.ref, psfs[1] * target.meta.areaSqft / 1e7, 1e-9));
+    ok(refs.land && refs.land.ref === null && /Not benchmarked/.test(refs.land.reason), 'land has data but no per-sq-ft reference');
+  });
+  test('No reference with fewer than two comparable projects', () => {
+    const one = selectedBenchmarks(target, cands).slice(0, 1);
+    const refs = categoryReferences(target, one);
+    eq(refs.superstructure.ref, null); ok(/at least 2/.test(refs.superstructure.reason));
+  });
+  test('Escalation assumption scales older projects by (1+e)^years', () => {
+    const t2 = JSON.parse(JSON.stringify(target)); t2.meta.escalationPct = 5;
+    const c2 = candidateBenchmarks(t2, demo);
+    const refs = categoryReferences(t2, selectedBenchmarks(t2, c2));
+    const pA = refs.superstructure.pts.find(x => x.project.meta.name.includes('Tech Park A'));
+    ok(near(pA.factor, Math.pow(1.05, 2026 - 2019)));
+  });
+  test('Land and finance are never given per-sq-ft references', () => { ok(!CAT.land.bench && !CAT.finance.bench); });
+
+  // ---------- storage shape ----------
+  test('Legacy projects migrate without losing assumptions', () => {
+    const legacy = { id: 'x', createdAt: '2026-01-01T00:00:00Z', assumptions: { ...SAMPLE_ASSUMPTIONS, name: 'Old' }, updates: [{ id: 'u' }], scenarios: [] };
+    const p = Store.normalize(JSON.parse(JSON.stringify(legacy)));
+    eq(p.meta.name, 'Old'); eq(p.meta.areaSqft, 260000); eq(p.meta.originalBudget, 165.8); eq(p.updates.length, 1); ok(Array.isArray(p.costLines));
+    eq(p.assumptions.land, 45);
+  });
+
+  // ---------- Excel round trip ----------
+  await test('Excel round trip: messy cost sheet is read, mapped and parsed', async () => {
+    const X = await loadXlsx();
+    const ws = X.utils.aoa_to_sheet([
+      ['Project Cost Report – FY24'], [],
+      ['Project', 'Cost Head', 'Budget (Rs)', 'Actual Spent (Rs)', 'Remarks'],
+      ['Tower 1', 'RCC Works', 342000000, 373000000, 'Steel rate revision'],
+      ['Tower 1', 'HVAC', 204000000, '21,60,00,000', ''],
+      ['Tower 1', 'Facade', 115000000, 'TBC', ''],
+      ['Tower 1', 'Grand Total', 661000000, 589000000, ''],
+    ]);
+    const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, 'Costs');
+    const file = new File([X.write(wb, { type: 'array', bookType: 'xlsx' })], 'report.xlsx');
+    const data = await readCostWorkbook(file);
+    const sheet = data.sheets[0];
+    const h = detectHeaderRow(sheet.rows); eq(h, 2);
+    const map = guessMapping(sheet.rows[h]); eq(map.category, 1); eq(map.estimate, 2); eq(map.actual, 3); eq(map.reason, 4);
+    const unit = guessUnit(sheet.rows, h, map); eq(unit, 'rupees');
+    const rows = buildCostRows(sheet, h, map, unit);
+    eq(rows.length, 4); eq(rows[0].rowNum, 4, 'row number matches the spreadsheet'); eq(rows[0].values.estimate, 34.2); eq(rows[1].values.actual, 21.6);
+    eq(rows[2].values.actual, null, 'TBC is missing'); ok(!rows[2].errors.length, 'TBC is a missing token, not an error');
+    ok(rows[3].isTotal && !rows[3].include);
+  });
+  await test('Invalid file types are rejected with a clear message', async () => {
+    let msg = '';
+    try { await readCostWorkbook(new File(['x'], 'notes.pdf')); } catch (e) { msg = e.message; }
+    ok(/isn.t supported/.test(msg), msg);
+  });
+
+  await test('Corrupt .xlsx (not a real Excel file) is rejected', async () => {
+    let msg = '';
+    try { await readCostWorkbook(new File([new Uint8Array([1, 2, 3, 4, 5, 6])], 'broken.xlsx')); } catch (e) { msg = e.message; }
+    ok(/valid \.xlsx/.test(msg), msg);
+  });
+  await test('Empty CSV and CSV without a table are rejected', async () => {
+    let m1 = '', m2 = '';
+    try { await readCostWorkbook(new File([''], 'empty.csv')); } catch (e) { m1 = e.message; }
+    try { await readCostWorkbook(new File(['just one line'], 'one.csv')); } catch (e) { m2 = e.message; }
+    ok(m1, 'empty rejected'); ok(/No table/.test(m2), m2);
+  });
+  await test('Valid CSV is accepted', async () => {
+    const d = await readCostWorkbook(new File(['Category,Estimate,Actual\nMEP,10,11\nFacade,5,5'], 'ok.csv'));
+    eq(d.sheets[0].rows.length, 3);
+  });
+
+  const pass = results.filter(r => r[1]).length;
+  document.getElementById('summary').innerHTML = `<span class="${pass === results.length ? 'pass' : 'fail'}">${pass} of ${results.length} tests passed</span>`;
+  document.getElementById('results').innerHTML = results.map(([n, p, m]) => `<li class="${p ? 'pass' : 'fail'}">${p ? '✓' : '✗'} ${n}${m ? ` <code>${m.replace(/</g, '&lt;')}</code>` : ''}</li>`).join('');
+  window.__testResults = { pass, total: results.length, failed: results.filter(r => !r[1]) };
+  })();
+  </script>
+</body>
+</html>

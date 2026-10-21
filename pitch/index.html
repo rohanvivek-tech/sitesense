@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SiteSense</title>
+  <meta name="description" content="SiteSense helps commercial real estate developers evaluate feasibility, track development costs and see how changing assumptions move projected returns before committing capital.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23173D35'/%3E%3Cpath d='M22 9H10v7h12' stroke='%23F6F4EE' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3Cpath d='M22 16v7H10' stroke='%23C7A66A' stroke-width='3' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="SiteSense home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg>
+      <span>SiteSense</span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a href="#problem">Problem</a>
+      <a href="#product">Product</a>
+      <a href="#demo">Demo</a>
+      <a href="#how">How it works</a>
+    </nav>
+    <a class="btn btn-primary btn-sm nav-cta" href="#demo">Explore SiteSense</a>
+    <button class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">For commercial real estate developers in Bengaluru</p>
+        <h1>Make every development decision with financial clarity.</h1>
+        <p class="lead">Evaluate project feasibility, track development costs against budget, and see how changing construction costs move your projected returns before you commit capital.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#demo">Explore SiteSense</a>
+          <a class="btn btn-secondary" href="#how">See how it works</a>
+        </div>
+        <ul class="hero-points">
+          <li>Every number computed by code, never by AI</li>
+          <li>Every explanation cited and approved by you</li>
+        </ul>
+      </div>
+
+      <!-- product preview -->
+      <figure class="preview" aria-label="Illustrative product preview">
+        <div class="preview-bar">
+          <span class="dots"><i></i><i></i><i></i></span>
+          <span class="preview-title">Whitefield Grade-A Office</span>
+          <span class="badge badge-neutral">Illustrative</span>
+        </div>
+        <div class="preview-body">
+          <div class="preview-meta">
+            <div>
+              <p class="meta-label">Development type</p>
+              <p class="meta-val">Grade-A office · 2,00,000 sq ft leasable</p>
+            </div>
+            <div class="seg seg-sm" role="group" aria-label="Preview scenario">
+              <button class="is-on" data-pv="base">Feasibility</button>
+              <button data-pv="hit">Cost escalation</button>
+            </div>
+          </div>
+          <dl class="pv-kpis">
+            <div><dt>Development cost</dt><dd data-pv-k="cost">—</dd></div>
+            <div><dt>Projected value (GDV)</dt><dd data-pv-k="gdv">—</dd></div>
+            <div><dt>Profit on GDV</dt><dd data-pv-k="margin">—</dd></div>
+            <div class="pv-irr"><dt>Equity IRR</dt><dd data-pv-k="irr">—</dd></div>
+          </dl>
+          <div class="pv-section">
+            <p class="meta-label">Cost breakdown</p>
+            <div class="stack" id="pv-stack" aria-hidden="true"></div>
+            <ul class="legend" id="pv-legend"></ul>
+          </div>
+          <div class="pv-section">
+            <p class="meta-label">Equity IRR by scenario</p>
+            <div class="pv-scen" id="pv-scen"></div>
+          </div>
+        </div>
+        <figcaption class="tiny subtle">Sample project. Figures are computed live from the stated assumptions and are not a financial prediction.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section id="problem" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The problem</p>
+        <h2>Assumptions move after the feasibility is approved. The model doesn't.</h2>
+        <p class="section-lead">Commercial projects rest on assumptions about construction costs, financing, timelines, rents and exit values. When those assumptions change, profitability changes too, but the pro forma is usually rebuilt by hand, weeks later, after more capital is committed.</p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="problem-figure">
+          <p class="meta-label">Sample project, cost escalation only</p>
+          <div class="pf-row">
+            <span class="pf-num" data-k="base-irr">—</span>
+            <span class="pf-arrow" aria-hidden="true">→</span>
+            <span class="pf-num adverse" data-k="hit-irr">—</span>
+          </div>
+          <p class="pf-caption">Equity IRR when steel rises 18%, cement 10%, labour 8% and the build slips 4 months, against a <span data-k="hurdle">—</span> hurdle.</p>
+        </div>
+        <dl class="problem-stats">
+          <div><dt data-k="hit-cons-pct">—</dt><dd>increase in construction cost</dd></div>
+          <div><dt data-k="hit-pts">—</dt><dd>of equity IRR lost on a <span data-k="base-total">—</span> project</dd></div>
+          <div><dt data-k="hit-profit">—</dt><dd>of equity profit gone, with no line in the original model flagging it</dd></div>
+        </dl>
+      </div>
+
+      <div class="note">
+        <div>
+          <p class="note-title">Why start with construction cost escalation</p>
+          <p>Of the gaps between feasibility and reality, cost escalation is the easiest to put in rupees and has live data behind it: material prices and contractor rates change monthly.</p>
+        </div>
+        <div class="note-side">
+          <span class="badge badge-accent">Validating next</span>
+          <p>5–8 interviews across developers, finance and site teams to confirm how often this happens and what it really costs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRODUCT AREAS -->
+  <section id="product" class="section section-deep">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">The product</p>
+        <h2>One model, four questions every developer asks.</h2>
+      </div>
+
+      <div class="areas">
+        <article class="area area-feas">
+          <div class="area-copy">
+            <span class="area-n">01</span>
+            <h3>Project feasibility</h3>
+            <p>Upload your existing model once. SiteSense reads every assumption, cites where it came from, and checks the totals against your source before anything runs.</p>
+          </div>
+          <div class="area-visual mini-sheet" id="mini-sheet"></div>
+        </article>
+
+        <article class="area area-cost">
+          <div class="area-copy">
+            <span class="area-n">02</span>
+            <h3>Development costs</h3>
+            <p>See where the budget sits by package, and what happens to each line when steel, cement or labour prices move.</p>
+          </div>
+          <div class="area-visual" id="mini-cost"></div>
+        </article>
+
+        <article class="area area-profit">
+          <div class="area-copy">
+            <span class="area-n">03</span>
+            <h3>Profitability and returns</h3>
+            <p>Projected value, total cost, profit and equity IRR, defined consistently and computed from the same cash flows.</p>
+          </div>
+          <div class="area-visual equation" id="mini-profit"></div>
+        </article>
+
+        <article class="area area-scen">
+          <div class="area-copy">
+            <span class="area-n">04</span>
+            <h3>Scenario comparison</h3>
+            <p>Compare how alternative cost and schedule assumptions may change the outcome against your hurdle rate.</p>
+          </div>
+          <div class="area-visual" id="mini-scen"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- TODAY VS FEASIBUILD -->
+  <section id="today" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Current state</p>
+        <h2>Today, finding the hit takes a manual rebuild.</h2>
+        <p class="section-lead">Developers typically rely on an in-house Excel pro forma, plus periodic reports from a cost consultant or quantity surveyor. Each covers part of the picture; none connects a price change to the return.</p>
+      </div>
+
+      <div class="compare">
+        <div class="compare-col">
+          <h3>Today</h3>
+          <ol class="flow">
+            <li><b>Excel pro forma</b> built once at Day 0, owned by one analyst</li>
+            <li><b>QS or cost consultant</b> reports cost-to-date monthly or quarterly as a PDF</li>
+            <li>Analyst <b>re-keys actuals</b> into a variance sheet</li>
+            <li>Team <b>searches emails and change orders</b> to explain each overrun</li>
+            <li>Pro forma <b>rebuilt by hand</b> to see the new return</li>
+            <li>Decision made on numbers that are already weeks old</li>
+          </ol>
+          <div class="shortfalls">
+            <p class="note-title">Why it falls short</p>
+            <ul>
+              <li>Excel models are static and break when someone else edits them</li>
+              <li>QS reports measure cost, not the impact on IRR</li>
+              <li>Weeks pass between a price rise and a rebuilt model</li>
+            </ul>
+          </div>
+        </div>
+        <div class="compare-col is-brand">
+          <h3>With SiteSense</h3>
+          <ol class="flow">
+            <li><b>Upload the model once</b>; AI extracts assumptions, code checks the totals</li>
+            <li><b>Milestone actuals and price changes</b> flow in</li>
+            <li><b>Code recomputes</b> variance, schedule slip and IRR in seconds</li>
+            <li><b>AI drafts the driver</b> of each variance, citing the source line</li>
+            <li><b>You approve or edit</b> every driver</li>
+            <li>Re-forecast with a <b>go, hold or re-scope</b> flag. The decision stays yours</li>
+          </ol>
+          <div class="outcomes">
+            <div><p class="note-title">Earlier warnings</p><p>See the IRR move when prices move, not at the quarterly review.</p></div>
+            <div><p class="note-title">Fewer bad commitments</p><p>Stress-test the deal before signing the land or the next draw.</p></div>
+          </div>
+        </div>
+      </div>
+      <p class="tiny subtle">The current workflow above is our working assumption and is being validated in interviews.</p>
+    </div>
+  </section>
+
+  <!-- DEMO -->
+  <section id="demo" class="section section-deep">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Live demo</p>
+        <h2>Two files in. A reviewed re-forecast out.</h2>
+        <p class="section-lead">One sample project at one milestone. Run the analysis, adjust the cost assumptions, approve the drivers, and watch the recommendation update.</p>
+      </div>
+
+      <div class="demo-grid">
+        <!-- Step 1 -->
+        <div class="card step">
+          <div class="step-head"><span class="step-n">1</span><h3>Upload</h3></div>
+          <div class="files">
+            <div class="file"><span class="file-ic">XLSX</span><div><b>feasibility_whitefield_v3.xlsx</b><span class="tiny subtle">Feasibility model and budget</span></div></div>
+            <div class="file"><span class="file-ic">PDF</span><div><b>cost_report_M09.pdf</b><span class="tiny subtle">Month 9 actuals, change orders, schedule</span></div></div>
+          </div>
+          <p class="tiny subtle">The demo uses one sample project. Uploading your own files comes next.</p>
+          <ol id="pipeline" class="pipeline">
+            <li>Extract assumptions <span class="badge badge-ai">AI</span></li>
+            <li>Check totals against source <span class="badge badge-code">Code</span></li>
+            <li>Compute variance and IRR <span class="badge badge-code">Code</span></li>
+            <li>Draft cited drivers <span class="badge badge-ai">AI</span></li>
+          </ol>
+          <button id="run-btn" class="btn btn-primary btn-block">Run analysis</button>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="card step">
+          <div class="step-head"><span class="step-n">2</span><h3>Extracted assumptions</h3></div>
+          <div class="table-wrap">
+            <table id="extract-table" class="table compact">
+              <thead><tr><th scope="col">Assumption</th><th scope="col" class="num">Value</th><th scope="col">Source</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="checksum" class="checksum" role="status"></p>
+        </div>
+      </div>
+
+      <div id="results" class="results">
+        <div class="locked-note">
+          <p>Press <b>Run analysis</b> to compute the variance and re-forecast.</p>
+        </div>
+
+        <div class="results-body">
+          <!-- Step 3 -->
+          <div class="card step">
+            <div class="step-head between">
+              <div class="step-head"><span class="step-n">3</span><h3>What changed</h3></div>
+              <div class="seg" role="radiogroup" aria-label="Decision point">
+                <label><input type="radio" name="commit" value="pre"><span>Before commitment</span></label>
+                <label><input type="radio" name="commit" value="milestone"><span>At Month 9</span></label>
+              </div>
+            </div>
+            <div class="sliders">
+              <label class="slider"><span>Steel <b data-k="s-steel"></b></span><input id="in-steel" type="range" min="-10" max="40" step="1"></label>
+              <label class="slider"><span>Cement and ready-mix <b data-k="s-cement"></b></span><input id="in-cement" type="range" min="-10" max="30" step="1"></label>
+              <label class="slider"><span>Labour <b data-k="s-labour"></b></span><input id="in-labour" type="range" min="-5" max="25" step="1"></label>
+              <label class="slider"><span>Schedule slip <b data-k="s-delay"></b></span><input id="in-delay" type="range" min="0" max="12" step="1"></label>
+            </div>
+            <div class="slider-foot">
+              <span class="small muted">Construction cost change: <b data-k="s-cons"></b><span class="hide-sm"> · At Month 9, price changes apply only to work not yet bought.</span></span>
+              <span class="btn-row">
+                <button id="preset-btn" class="btn btn-secondary btn-sm">Sample scenario</button>
+                <button id="reset-btn" class="btn btn-secondary btn-sm">Reset to feasibility</button>
+              </span>
+            </div>
+            <div class="table-wrap">
+              <table id="variance" class="table">
+                <thead><tr><th scope="col">Line</th><th scope="col" class="num">Feasibility</th><th scope="col" class="num">Re-forecast</th><th scope="col" class="num">Variance</th><th scope="col" class="num">%</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="demo-grid">
+            <!-- Step 4 -->
+            <div class="card step">
+              <div class="step-head between">
+                <div class="step-head"><span class="step-n">4</span><h3>Review the drivers</h3></div>
+                <button id="approve-all" class="btn btn-secondary btn-sm">Approve all</button>
+              </div>
+              <p class="small muted">AI drafts each explanation from the change orders and site reports and cites the source. Nothing counts until you approve it.</p>
+              <div class="progress" role="progressbar" aria-label="Drivers approved"><div id="approve-progress"></div></div>
+              <p class="tiny subtle" data-k="approved-count"></p>
+              <div id="drivers" class="drivers"></div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="card step forecast">
+              <div class="step-head between">
+                <div class="step-head"><span class="step-n">5</span><h3>Re-forecast</h3></div>
+                <span id="report-status" class="badge"></span>
+              </div>
+              <div class="irr-head">
+                <span class="meta-label">Equity IRR</span>
+                <div class="irr-line" aria-live="polite">
+                  <span class="irr-old" data-k="d-base-irr"></span>
+                  <span class="pf-arrow" aria-hidden="true">→</span>
+                  <span class="irr-new" data-k="d-new-irr"></span>
+                  <span id="irr-delta" class="delta"></span>
+                </div>
+              </div>
+              <div class="bars">
+                <div class="bar-row"><span class="tiny subtle">Feasibility</span><div class="bar"><div id="bar-base" class="bar-fill base"></div></div></div>
+                <div class="bar-row"><span class="tiny subtle">Re-forecast</span><div class="bar"><div id="bar-new" class="bar-fill new"></div></div></div>
+                <div class="bar-row"><span></span><div class="bar ghost"><div id="bar-hurdle" class="hurdle"><span>Hurdle <span data-k="hurdle"></span></span></div></div></div>
+              </div>
+              <dl class="kpis">
+                <div><dt>Equity profit</dt><dd data-k="d-profit"></dd></div>
+                <div><dt>Total cost incl. interest</dt><dd data-k="d-cost"></dd></div>
+                <div><dt>Completion</dt><dd data-k="d-completion"></dd></div>
+                <div><dt>Yield on cost</dt><dd data-k="d-yoc"></dd></div>
+              </dl>
+              <div id="decision" class="decision" role="status"></div>
+              <div class="summary">
+                <span class="badge badge-ai">AI summary</span>
+                <p id="summary"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scenario comparison -->
+          <div class="card step">
+            <div class="step-head between">
+              <div class="step-head"><span class="step-n">6</span><h3>Compare scenarios</h3></div>
+              <span class="small muted" data-k="cmp-when"></span>
+            </div>
+            <div class="table-wrap">
+              <table id="compare" class="table cmp">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <p class="tiny subtle">Profit on GDV = equity profit ÷ projected value at exit. All scenarios use the same cash-flow model as the re-forecast.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>AI reads the messy text. Code does the math. You make the call.</h2>
+        <p class="section-lead">AI only handles unstructured inputs. Every number is computed by code, and the developer approves every explanation before it counts.</p>
+      </div>
+
+      <div class="card flush">
+        <div class="table-wrap">
+          <table class="table roles">
+            <thead><tr><th scope="col">Step</th><th scope="col">Handled by</th><th scope="col">Why</th></tr></thead>
+            <tbody>
+              <tr><td>Extract assumptions</td><td><span class="badge badge-ai">AI</span> <span class="badge badge-code">Code</span></td><td>Every developer's model has different layouts and labels, so fixed cell mappings break. Code then checks extracted totals against the source.</td></tr>
+              <tr><td>Ingest actuals</td><td><span class="badge badge-code">Code</span></td><td>Fixed connectors are deterministic and cheap; AI adds nothing here.</td></tr>
+              <tr><td>Variance and IRR</td><td><span class="badge badge-code">Code</span></td><td>Arithmetic must be exact and repeatable. A language model never calculates the numbers.</td></tr>
+              <tr><td>Explain drivers</td><td><span class="badge badge-ai">AI</span></td><td>Causes live in free text such as change orders, emails and site notes. Keyword rules can't link a rebar rate revision to a budget-line overrun.</td></tr>
+              <tr><td>Review and approve</td><td><span class="badge badge-human">You</span></td><td>The developer is accountable; AI explanations are drafts until confirmed.</td></tr>
+              <tr><td>Re-forecast</td><td><span class="badge badge-code">Code</span> <span class="badge badge-ai">AI</span></td><td>A formula produces the numbers; AI only writes the plain-language summary. The go, hold or re-scope call stays with you.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3 class="sub">Architecture</h3>
+      <ol class="arch">
+        <li class="arch-node"><span class="arch-tool">Vercel</span><b>Upload page</b><span class="tiny subtle">Feasibility model and milestone actuals</span></li>
+        <li class="arch-node"><span class="arch-tool">n8n</span><b>Webhook</b><span class="tiny subtle">Receives files, runs the flow</span></li>
+        <li class="arch-node is-ai"><span class="arch-tool">Claude</span><b>Extract and explain</b><span class="tiny subtle">Assumptions, cited drivers, summary</span></li>
+        <li class="arch-node is-code"><span class="arch-tool">n8n code nodes</span><b>Check and compute</b><span class="tiny subtle">Checksums, variance, slip, IRR</span></li>
+        <li class="arch-node is-human"><span class="arch-tool">n8n wait</span><b>Your approval</b><span class="tiny subtle">Approve or edit each driver</span></li>
+        <li class="arch-node"><span class="arch-tool">Vercel</span><b>Dashboard</b><span class="tiny subtle">Variance, drivers, re-forecast</span></li>
+      </ol>
+      <p class="arch-foot small muted"><b>GitHub</b> holds the prompts, extraction schema, sample project and test cases, and deploys to Vercel on push.</p>
+
+      <div class="guards">
+        <div class="guard"><p class="note-title">Misread assumption</p><p class="small muted">AI picks up hard costs instead of total costs. The checksum against the source model must pass before anything runs.</p></div>
+        <div class="guard"><p class="note-title">Wrong driver blamed</p><p class="small muted">An overrun tagged as a price rise was really a scope change. You approve every driver before it counts.</p></div>
+        <div class="guard"><p class="note-title">Stale actuals</p><p class="small muted">An old cost report hides an overrun. Each source shows its last-updated date, and anything past cadence is flagged.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap cta-inner">
+      <h2>See the return move before the capital does.</h2>
+      <p>SiteSense is being built for the AI Hackathon. Next: live price feeds, connectors to accounting and project tools, and a calibration table that learns from approved variances.</p>
+      <div class="hero-cta">
+        <a class="btn btn-light" href="#demo">Explore SiteSense</a>
+        <a class="btn btn-ghost-light" href="#how">See how it works</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <a class="brand brand-sm" href="#top">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7"/><path class="m1" d="M22 9H10v7h12"/><path class="m2" d="M22 16v7H10"/></svg>
+      <span>SiteSense</span>
+    </a>
+    <p class="tiny subtle">Built by Rohan Vivek for the AI Hackathon. The sample project is illustrative, not real project data or a financial prediction.</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

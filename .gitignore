@@ -1,0 +1,5 @@
+.vercel
+.env*
+push-github.ps1
+Thumbs.db
+desktop.ini

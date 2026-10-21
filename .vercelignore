@@ -1,0 +1,5 @@
+.claude
+*.ps1
+.env
+.env.*
+.vercel
