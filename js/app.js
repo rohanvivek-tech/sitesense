@@ -135,6 +135,8 @@ function render() {
   const signin = a === 'signin';
   // every app page needs the sign-in details first
   if (!landing && !signin && !Profile.get()) { history.replaceState(null, '', '#/signin'); lastRouteKey = '#/signin'; return render(); }
+  // once signed in, stay signed in: the front page and sign-in page go straight to Home
+  if ((landing || signin) && Profile.get()) { history.replaceState(null, '', '#/overview'); lastRouteKey = '#/overview'; return render(); }
   $('#landing-shell').hidden = !landing;
   $('#signin-shell').hidden = !signin;
   $('#app-shell').hidden = landing || signin;

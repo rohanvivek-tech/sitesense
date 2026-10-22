@@ -93,7 +93,8 @@ function renderProject(p, tab, sub) {
     const el = $(`#body-${k}`);
     if ((k === 'profitability' || k === 'reforecast') && !feasOk) { renderNeedsFeasibility(p, el, k); continue; }
     if (k === 'profitability') {
-      el.innerHTML = '<div id="prof-part"></div><div id="scenarios" class="scroll-target"></div>';
+      el.innerHTML = '<div id="price-lab"></div><div id="prof-part"></div><div id="scenarios" class="scroll-target"></div>';
+      renderPriceLab(p, $('#price-lab'));
       renderProfitability(p, $('#prof-part'));
       renderScenarios(p, $('#scenarios'));
       continue;
@@ -550,7 +551,7 @@ function renderProfitability(p, body) {
     <div class="two-col">
       <section class="card pad">
         <div class="card-head"><h3 class="h3">Expected profit</h3><span class="tiny subtle">₹ Crore, from your feasibility figures</span></div>
-        <dl class="pv-list lg">
+        <dl class="pv-list pv-lg">
           <div><dt>Development cost excluding finance</dt><dd>${cr(r.total)}</dd></div>
           <div><dt>Finance cost (interest)</dt><dd>${cr(r.interest)}</dd></div>
           <div class="em"><dt>Total project cost</dt><dd>${cr(r.devCost)}</dd></div>
@@ -716,4 +717,83 @@ function renderDetails(p, body) {
   viewCleanup.push(() => window.removeEventListener('beforeunload', warnLeave));
   bindFeasImport(body, p);
   refresh();
+}
+
+// ---------- price lab: drag sliders to see the effect of price changes, live ----------
+const LAB_SLIDERS = [
+  ['steel', '🔩', 'Steel price', -20, 60, '%'],
+  ['cement', '🧱', 'Cement and concrete price', -20, 50, '%'],
+  ['labour', '👷', 'Labour cost', -10, 40, '%'],
+  ['delay', '⏱️', 'Delay', 0, 24, 'months'],
+  ['rentChg', '🏷️', 'Rent', -30, 30, '%'],
+  ['rateChg', '🏦', 'Loan interest', -3, 5, 'pts'],
+];
+const labState = {};   // per project, kept while you move around the page
+// red when the change hurts profit, green when it helps
+const labTone = (k, v) => !v ? '' : (k === 'rentChg' ? v < 0 : v > 0) ? 'neg' : 'pos';
+const labZero = () => ({ steel: 0, cement: 0, labour: 0, delay: 0, rentChg: 0, rateChg: 0 });
+
+function renderPriceLab(p, el) {
+  const a = p.assumptions;
+  const s = labState[p.id] = labState[p.id] || labZero();
+  const fmtVal = (k, v) => k === 'delay' ? `${v} month${v === 1 ? '' : 's'}` : k === 'rateChg' ? `${v > 0 ? '+' : ''}${v} pts` : `${v > 0 ? '+' : ''}${v}%`;
+  el.innerHTML = `
+    <section class="card pad lab">
+      <div class="card-head"><h3 class="h3">🎚️ Drag to test price changes</h3><div class="btn-row"><button class="btn btn-quiet btn-sm" data-lab="reset">Reset</button><button class="btn btn-secondary btn-sm" data-lab="save">Save as a what-if</button></div></div>
+      <p class="small muted">Move a slider and watch the profit change straight away. This is only a test, nothing is saved unless you click “Save as a what-if”.</p>
+      <div class="lab-grid">
+        <div class="lab-sliders">${LAB_SLIDERS.map(([k, icon, label, min, max]) => `
+          <div class="lab-slider">
+            <div class="lab-label"><label for="lab-${k}"><span aria-hidden="true">${icon}</span> ${label}</label><b data-lab-val="${k}" class="${labTone(k, s[k])}">${fmtVal(k, s[k])}</b></div>
+            <input type="range" id="lab-${k}" min="${min}" max="${max}" step="${k === 'rateChg' ? 0.5 : 1}" value="${s[k]}" data-lab-k="${k}">
+            <div class="lab-scale tiny subtle"><span>${fmtVal(k, min)}</span><span>${fmtVal(k, max)}</span></div>
+          </div>`).join('')}
+        </div>
+        <div class="lab-result" id="lab-result" aria-live="polite"></div>
+      </div>
+    </section>`;
+
+  const out = $('#lab-result', el);
+  const draw = () => {
+    const base = baseline(a);
+    const r = runModel(a, { ...s, commit: 'pre' });
+    const d = r.irr - base.irr;
+    const dec = decision(r.irr, a.hurdle);
+    const changed = Object.values(s).some(v => v);
+    const max = Math.max(0.25, base.irr * 1.25, r.irr * 1.25, a.hurdle * 1.3);
+    const w = v => `${Math.max(0, Math.min(1, (v || 0) / max)) * 100}%`;
+    out.innerHTML = `
+      <span class="meta-label">Return (IRR) ${help('irr')}</span>
+      <div class="irr-line"><span class="irr-old">${pct(base.irr)}</span><span class="arrow" aria-hidden="true">→</span><span class="irr-new ${d < -0.0005 ? 'is-down' : ''}">${pct(r.irr)}</span></div>
+      <span class="delta ${d < -0.0005 ? 'neg' : d > 0.0005 ? 'pos' : ''}">${Math.abs(d) < 0.0005 ? 'No change yet' : pts(d)}</span>
+      <div class="bars" role="img" aria-label="Return ${pct(base.irr)} planned, ${pct(r.irr)} with these changes, target ${pct(a.hurdle)}">
+        <div class="bar-row"><span class="tiny subtle">Plan</span><div class="bar"><div class="bar-fill base" style="width:${w(base.irr)}"></div></div></div>
+        <div class="bar-row"><span class="tiny subtle">With changes</span><div class="bar"><div class="bar-fill new" style="width:${w(r.irr)}"></div></div></div>
+        <div class="bar-row"><span></span><div class="bar ghost"><div class="hurdle" style="left:${w(a.hurdle)}; top:-40px"><span>Target ${pct(a.hurdle)}</span></div></div></div>
+      </div>
+      <dl class="pv-list">
+        <div><dt>Profit</dt><dd>${cr(r.profit)} <span class="tiny ${r.profit < base.profit - 0.05 ? 'neg' : r.profit > base.profit + 0.05 ? 'pos' : 'subtle'}">${Math.abs(r.profit - base.profit) < 0.05 ? '' : crSigned(r.profit - base.profit)}</span></dd></div>
+        <div><dt>Total cost</dt><dd>${cr(r.devCost)} <span class="tiny ${r.devCost > base.devCost + 0.05 ? 'neg' : r.devCost < base.devCost - 0.05 ? 'pos' : 'subtle'}">${Math.abs(r.devCost - base.devCost) < 0.05 ? '' : crSigned(r.devCost - base.devCost)}</span></dd></div>
+        <div><dt>Finishes in</dt><dd>Month ${r.completion}${r.completion !== base.completion ? ` <span class="tiny neg">(+${r.completion - base.completion})</span>` : ''}</dd></div>
+      </dl>
+      <div class="decision decision-${dec.key}"><span class="decision-label">${dec.label}</span><span class="decision-note">${changed ? `${dec.note} of ${pct(a.hurdle)}` : 'Move a slider to test a change'}</span></div>`;
+  };
+  el.addEventListener('input', e => {
+    const k = e.target.dataset.labK;
+    if (!k) return;
+    s[k] = Number(e.target.value);
+    const v = $(`[data-lab-val="${k}"]`, el);
+    v.textContent = fmtVal(k, s[k]);
+    v.className = labTone(k, s[k]);
+    draw();
+  });
+  $('[data-lab="reset"]', el).addEventListener('click', () => { labState[p.id] = labZero(); renderPriceLab(p, el); });
+  $('[data-lab="save"]', el).addEventListener('click', () => {
+    if (!Object.values(s).some(v => v)) { toast('Move a slider first, then save it.', 'err'); return; }
+    const name = LAB_SLIDERS.filter(([k]) => s[k]).map(([k, , label]) => `${label.split(' ')[0]} ${fmtVal(k, s[k])}`).join(', ');
+    Store.newScenario(p, { name, cons: 0, ...s });
+    toast('Saved. You can find it under What-if scenarios below.');
+    render();
+  });
+  draw();
 }

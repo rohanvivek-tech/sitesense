@@ -179,9 +179,9 @@ function annualIrr(flows) {
 
 function decision(irr, hurdle) {
   if (!Number.isFinite(irr)) return { key: 'rescope', label: 'Re-scope', note: 'Return could not be computed' };
-  if (irr >= hurdle) return { key: 'go', label: 'Go', note: 'Clears the hurdle rate' };
-  if (irr >= hurdle - 0.03) return { key: 'hold', label: 'Hold', note: 'Within 3 points of the hurdle' };
-  return { key: 'rescope', label: 'Re-scope', note: 'More than 3 points below the hurdle' };
+  if (irr >= hurdle) return { key: 'go', label: 'Go', note: 'Meets the target' };
+  if (irr >= hurdle - 0.03) return { key: 'hold', label: 'Hold', note: 'Within 3 points of the target' };
+  return { key: 'rescope', label: 'Re-scope', note: 'More than 3 points below the target' };
 }
 
 const BASE_INPUTS = { steel: 0, cement: 0, labour: 0, delay: 0 };
