@@ -49,7 +49,7 @@ const CAUSE_HINTS = {
   site: ['site condition', 'rock', 'soil', 'water table', 'ground', 'dewatering', 'utility', 'monsoon', 'rain'],
   scope: ['scope', 'added', 'addition', 'client request', 'tenant request', 'upgrade'],
 };
-const REASON_STATUS = { confirmed: 'Confirmed', investigating: 'Under investigation', unknown: 'Unknown' };
+const REASON_STATUS = { confirmed: 'Confirmed', investigating: 'Being checked', unknown: 'Not known yet' };
 
 const LINE_STATUS = {
   over: { label: 'Over budget', cls: 'st-over' },

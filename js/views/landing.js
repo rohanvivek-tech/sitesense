@@ -20,6 +20,7 @@ function renderLanding() {
         <h1>Build with clarity.<br>Invest with confidence.</h1>
         <p class="l-lead">Learn from past construction costs, benchmark future projects, and make better-informed commercial real estate development decisions.</p>
         <div class="l-cta"><a class="btn btn-primary btn-lg" href="#/overview">Explore SiteSense</a><button class="btn btn-secondary btn-lg" data-action="scroll" data-target="how">See how it works</button></div>
+        <p class="l-try"><a class="btn btn-quiet btn-sm" href="#/learn">New here? Take the short guided tour →</a></p>
         <ul class="l-points"><li>Estimates compared with actual outcomes, category by category</li><li>Recorded reasons for every overrun, marked confirmed or unverified</li><li>New budgets checked against comparable completed projects</li></ul>
       </div>
 

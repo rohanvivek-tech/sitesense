@@ -216,15 +216,15 @@ async function downloadTemplate() {
 
 const COST_FIELDS = [
   { key: 'project', label: 'Project name', syn: ['project name', 'project', 'site', 'development', 'property'] },
-  { key: 'category', label: 'Cost category', required: true, syn: ['cost category', 'category', 'cost head', 'head', 'cost code description', 'description', 'item', 'package', 'work package', 'trade', 'particulars', 'element', 'line item'] },
-  { key: 'estimate', label: 'Original estimated cost', required: true, money: true, syn: ['original estimate', 'original budget', 'estimated cost', 'estimate', 'feasibility', 'feasibility budget', 'sanctioned budget', 'budget', 'boq amount', 'planned cost', 'base budget'] },
+  { key: 'category', label: 'Cost item or category', required: true, syn: ['cost category', 'category', 'cost head', 'head', 'cost code description', 'description', 'item', 'package', 'work package', 'trade', 'particulars', 'element', 'line item'] },
+  { key: 'estimate', label: 'Original budget', required: true, money: true, syn: ['original estimate', 'original budget', 'estimated cost', 'estimate', 'feasibility', 'feasibility budget', 'sanctioned budget', 'budget', 'boq amount', 'planned cost', 'base budget'] },
   { key: 'revised', label: 'Revised budget', money: true, syn: ['revised budget', 'revised estimate', 'revised', 'current budget', 'approved budget', 'latest budget'] },
-  { key: 'committed', label: 'Committed cost', money: true, syn: ['committed', 'commitment', 'commitments', 'po value', 'contract value', 'awarded', 'order value'] },
-  { key: 'actual', label: 'Actual cost to date', money: true, syn: ['actual cost', 'actual to date', 'actual', 'cost to date', 'spent', 'incurred', 'expenditure', 'paid', 'actuals'] },
-  { key: 'forecast', label: 'Forecast final cost', money: true, syn: ['forecast final cost', 'forecast final', 'forecast', 'eac', 'estimate at completion', 'anticipated final cost', 'afc', 'projected final', 'final cost', 'outturn'] },
+  { key: 'committed', label: 'Committed (orders placed)', money: true, syn: ['committed', 'commitment', 'commitments', 'po value', 'contract value', 'awarded', 'order value'] },
+  { key: 'actual', label: 'Spent so far', money: true, syn: ['actual cost', 'actual to date', 'actual', 'cost to date', 'spent', 'incurred', 'expenditure', 'paid', 'actuals'] },
+  { key: 'forecast', label: 'Expected final cost', money: true, syn: ['forecast final cost', 'forecast final', 'forecast', 'eac', 'estimate at completion', 'anticipated final cost', 'afc', 'projected final', 'final cost', 'outturn'] },
   { key: 'period', label: 'Period or date', syn: ['period', 'month', 'date', 'quarter', 'as of', 'as at', 'reporting period'] },
-  { key: 'reason', label: 'Variance reason', syn: ['variance reason', 'reason', 'remarks', 'remark', 'comment', 'comments', 'notes', 'explanation', 'cause'] },
-  { key: 'complete', label: 'Work complete?', syn: ['complete', 'completed', 'status', 'closed', 'final'] },
+  { key: 'reason', label: 'Reason it went over', syn: ['variance reason', 'reason', 'remarks', 'remark', 'comment', 'comments', 'notes', 'explanation', 'cause'] },
+  { key: 'complete', label: 'Is the work finished?', syn: ['complete', 'completed', 'status', 'closed', 'final'] },
 ];
 // Excel files must carry a real Excel signature; otherwise the reader would treat random bytes as text.
 function checkSignature(name, buf) {
@@ -367,11 +367,11 @@ function buildCostRows(sheet, headerIdx, map, unit) {
       if (p.error) row.errors.push(`${f.label}: ${p.error}`);
     }
     if (!row.rawCategory) row.errors.push('No cost category');
-    if (row.values.estimate === null && !row.errors.some(e => e.startsWith('Original'))) row.warnings.push('No original estimate. Variance can’t be calculated');
-    if (row.values.estimate === 0) row.warnings.push('Original estimate is zero. Any spend will be flagged for review, not as an overrun');
-    if (row.values.actual === null && row.values.forecast === null) row.warnings.push('No actual or forecast cost');
+    if (row.values.estimate === null && !row.errors.some(e => e.startsWith('Original'))) row.warnings.push('No budget figure, so SiteSense can’t tell if it went over');
+    if (row.values.estimate === 0) row.warnings.push('Budget is zero; any spending will be flagged to check, not counted as going over');
+    if (row.values.actual === null && row.values.forecast === null) row.warnings.push('Nothing spent or forecast yet');
     if (row.values.estimate !== null && row.values.estimate < 0) row.warnings.push('Negative estimate');
-    if (isTotalLabel(row.rawCategory)) { row.isTotal = true; row.include = false; row.warnings.unshift('Looks like a total row. Excluded to avoid double counting (tick to include)'); }
+    if (isTotalLabel(row.rawCategory)) { row.isTotal = true; row.include = false; row.warnings.unshift('Looks like a total, so it’s left out to avoid counting twice (tick to include)'); }
     out.push(row);
   }
   // duplicates within the file: same project + category + period

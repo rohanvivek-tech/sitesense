@@ -11,29 +11,29 @@ function renderImport() {
   if (!imp.data) {
     const history = Store.all().flatMap(p => (p.imports || []).map(i => ({ ...i, project: p }))).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
     view().innerHTML = `
-      ${pageHead('Import budgets and actual costs', `Bring cost data in from the spreadsheets you already keep${preset ? ` for <b>${esc(preset.meta.name)}</b>` : ''}. You map the columns and review every flagged row before anything is saved.`, '', preset ? `<a class="crumb" href="#/p/${preset.id}/costs">${esc(preset.meta.name)}</a>` : '')}
+      ${pageHead('Upload costs', `Use the spreadsheet you already keep${preset ? ` for <b>${esc(preset.meta.name)}</b>` : ''}. It takes three quick steps, and nothing is saved until you click Import.`, '', preset ? `<a class="crumb" href="#/p/${preset.id}/costs">${esc(preset.meta.name)}</a>` : '')}
       <div class="new-grid">
         <section class="card new-upload">
           <label class="dropzone" data-drop tabindex="0">
             <span class="dz-icon" aria-hidden="true"></span>
-            <b>Drop a cost spreadsheet here</b>
+            <b>Drop your spreadsheet here</b>
             <span class="small muted">or <u>browse files</u> · .xlsx, .xls or .csv, up to 15 MB</span>
             <input type="file" accept=".xlsx,.xlsm,.xls,.csv" hidden id="cost-file">
           </label>
           <div id="imp-status" role="status"></div>
-          <p class="tiny subtle">Files are read in your browser and are not uploaded. Imported rows are saved in this browser's storage.</p>
+          <p class="tiny subtle">Your file stays on this computer. It is read in your browser, not uploaded anywhere.</p>
         </section>
         <aside class="new-alt">
           <div class="card pad prose">
-            <h2 class="h3">What the file should contain</h2>
-            <p class="small">One row per cost category (and optionally per project or period), with columns such as:</p>
-            <ul class="small">${COST_FIELDS.map(f => `<li>${esc(f.label)}${f.required ? ' <b>(required)</b>' : ''}</li>`).join('')}</ul>
-            <p class="small muted">Column names don't need to match; you map them in the next step. Amounts can be in ₹ Crore, ₹ Lakh or rupees.</p>
-            <button class="btn btn-secondary btn-sm" data-action="cost-template">Download cost data template</button>
+            <h2 class="h3">What works</h2>
+            <p class="small">Any Excel or CSV file with <b>one row per cost item</b> and columns such as:</p>
+            <ul class="small"><li>the cost item or category name</li><li>the original budget</li><li>what was spent (and, optionally, a forecast or reason)</li></ul>
+            <p class="small muted">Your column names don’t have to match. Amounts can be in ₹ Crore, Lakh or rupees.</p>
+            <div class="btn-row"><button class="btn btn-secondary btn-sm" data-action="cost-template">Download an example file</button>${Store.hasDemo() ? '' : '<button class="btn btn-quiet btn-sm" data-action="load-demo">Or try sample data</button>'}</div>
           </div>
         </aside>
       </div>
-      ${history.length ? `<section class="card pad"><div class="card-head"><h2 class="h3">Recent imports</h2></div><div class="table-wrap"><table class="table compact"><thead><tr><th>File</th><th>Project</th><th>Date</th><th class="num">Added</th><th class="num">Updated</th><th class="num">Flagged</th><th class="num">Excluded by you</th></tr></thead><tbody>${history.map(h => `<tr><td>${esc(h.fileName)}</td><td><a class="link" href="#/p/${h.project.id}/costs">${esc(h.project.meta.name)}</a></td><td>${fmtDate(h.date)}</td><td class="num">${h.added}</td><td class="num">${h.updated}</td><td class="num">${h.flagged}</td><td class="num">${h.excluded}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
+      ${history.length ? `<section class="card pad"><div class="card-head"><h2 class="h3">Recent uploads</h2></div><div class="table-wrap"><table class="table compact"><thead><tr><th>File</th><th>Project</th><th>Date</th><th class="num">Added</th><th class="num">Updated</th><th class="num">Flagged</th><th class="num">Excluded by you</th></tr></thead><tbody>${history.map(h => `<tr><td>${esc(h.fileName)}</td><td><a class="link" href="#/p/${h.project.id}/costs">${esc(h.project.meta.name)}</a></td><td>${fmtDate(h.date)}</td><td class="num">${h.added}</td><td class="num">${h.updated}</td><td class="num">${h.flagged}</td><td class="num">${h.excluded}</td></tr>`).join('')}</tbody></table></div></section>` : ''}`;
     const onFile = async f => {
       $('#imp-status').innerHTML = `<p class="msg"><span class="spinner" aria-hidden="true"></span>Reading ${esc(f.name)}…</p>`;
       try {
@@ -61,6 +61,7 @@ function selectSheet(i) {
   imp.target = preset ? { mode: 'existing', id: preset.id } : (imp.map.project !== null ? { mode: 'column' } : { mode: 'new', name: imp.data.fileName.replace(/\.(xlsx|xlsm|xls|csv)$/i, ''), status: 'completed' });
   imp.newStatus = imp.newStatus || {};
   imp.existingMode = 'update';
+  imp.step = 1;
   rebuildRows();
 }
 
@@ -97,98 +98,118 @@ function renderImportSteps() {
   const warnRows = rows.filter(r => r.warnings.length && !r.errors.length);
   const excluded = rows.filter(r => !r.include);
   const projNames = [...new Set(included.map(projectNameFor))];
-  const rawCats = [...new Set(rows.filter(r => r.rawCategory).map(r => r.rawCategory))];
+  const rawCats = [...new Set(rows.filter(r => r.rawCategory && r.include).map(r => r.rawCategory))];
+  const unsure = rawCats.filter(c => !imp.catMap[c].confident);
+  const sure = rawCats.filter(c => imp.catMap[c].confident);
   const targetOk = imp.target.mode === 'column' ? imp.map.project !== null : imp.target.mode === 'existing' ? !!Store.get(imp.target.id) : !!(imp.target.name || '').trim();
   const filter = imp.filter || 'issues';
-  const shownRows = filter === 'all' ? rows : rows.filter(r => r.errors.length || r.warnings.length || !r.include);
+  const attention = rows.filter(r => r.errors.length || r.warnings.length || !r.include);
+  const shownRows = filter === 'all' ? rows : attention;
   const existingProjects = Store.list();
+  const step = imp.step = Math.min(imp.step || 1, mapOk ? (targetOk ? 3 : 2) : 1);
+  const steps = ['Match columns', 'Project and categories', 'Review and import'];
+  const catRow = c => `<tr><td>${esc(c)}</td><td class="num">${rows.filter(r => r.rawCategory === c).length}</td><td><select data-cat="${esc(c)}" aria-label="Category for ${esc(c)}" class="${imp.catMap[c].confident ? '' : 'needs-check'}">${CATEGORIES.map(k => `<option value="${k.key}" ${k.key === imp.catMap[c].key ? 'selected' : ''}>${k.label}</option>`).join('')}</select></td></tr>`;
+  const moneyCols = COST_FIELDS.filter(f => f.money && imp.map[f.key] !== null);
+  const label = f => ({ estimate: 'Budget', revised: 'Revised', committed: 'Committed', actual: 'Spent', forecast: 'Forecast' }[f.key]);
 
-  view().innerHTML = `
-    ${pageHead('Import budgets and actual costs', `<b>${esc(imp.data.fileName)}</b> · ${plural(rows.length, 'data row')} found`, '<button class="btn btn-quiet btn-sm" data-imp="reset">Choose another file</button>')}
+  const stepper = `<ol class="stepper" aria-label="Import steps">
+    <li class="is-done"><span>✓</span>Upload</li>
+    ${steps.map((t, i) => `<li class="${i + 1 < step ? 'is-done' : i + 1 === step ? 'is-current' : ''}" ${i + 1 === step ? 'aria-current="step"' : ''}>${i + 1 < step ? `<button data-imp-goto="${i + 1}"><span>✓</span>${t}</button>` : `<span>${i + 1}</span>${t}`}</li>`).join('')}
+  </ol>`;
 
+  const step1 = `
     <section class="card pad">
-      <div class="card-head"><h2 class="h3">1. Sheet and header row</h2></div>
-      <div class="fgrid">
-        ${imp.data.sheets.length > 1 ? `<div class="field"><label class="field-label" for="imp-sheet">Sheet</label><select id="imp-sheet">${imp.data.sheets.map((s, i) => `<option value="${i}" ${i === imp.sheetIdx ? 'selected' : ''}>${esc(s.name)} (${s.rows.length} rows)</option>`).join('')}</select></div>` : `<div class="field"><span class="field-label">Sheet</span><span class="small">${esc(sheet.name)}</span></div>`}
-        <div class="field"><label class="field-label" for="imp-header">Header row</label><span class="input-wrap sm"><input id="imp-header" type="text" inputmode="numeric" value="${imp.headerIdx + 1 + (sheet.offset || 0)}"></span><span class="field-hint">Detected automatically; change it if the column names are on another row</span></div>
-        <div class="field"><label class="field-label" for="imp-unit">Amounts are in</label><select id="imp-unit">${Object.entries(UNITS).map(([k, l]) => `<option value="${k}" ${k === imp.unit ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="field-hint">Suggested from the values; cells labelled “Cr” or “lakh” are converted individually</span></div>
-      </div>
-    </section>
-
-    <section class="card pad">
-      <div class="card-head"><h2 class="h3">2. Map columns</h2><span class="tiny subtle">Suggested from the column names. Check each one.</span></div>
+      <div class="card-head"><h2 class="h3">Which column is which?</h2><span class="tiny subtle">We’ve guessed from the column names. Check they’re right.</span></div>
       <div class="map-grid">${COST_FIELDS.map(f => `
         <div class="field"><label class="field-label" for="map-${f.key}">${esc(f.label)}${f.required ? ' <span class="req">Required</span>' : ''}</label>
-          <select id="map-${f.key}" data-map="${f.key}"><option value="">Not in file</option>${Array.from({ length: ncols }, (_, c) => `<option value="${c}" ${imp.map[f.key] === c ? 'selected' : ''}>${esc(colName(c))}${sample(c) !== '' ? ` · e.g. ${esc(sample(c))}` : ''}</option>`).join('')}</select></div>`).join('')}
+          <select id="map-${f.key}" data-map="${f.key}" class="${imp.map[f.key] !== null ? 'is-mapped' : ''}"><option value="">Not in my file</option>${Array.from({ length: ncols }, (_, c) => `<option value="${c}" ${imp.map[f.key] === c ? 'selected' : ''}>${esc(colName(c))}${sample(c) !== '' ? ` · e.g. ${esc(sample(c))}` : ''}</option>`).join('')}</select></div>`).join('')}
       </div>
-      ${!mapOk ? `<p class="msg msg-err mt">${imp.map.category === null ? 'Map the cost category column.' : ''} ${!moneyMapped ? 'Map at least one amount column (estimate, revised, committed, actual or forecast).' : ''}</p>` : imp.map.estimate === null ? '<p class="msg mt">No original estimate column is mapped. Lines will be imported without estimates, so variances can’t be calculated until you add them.</p>' : ''}
-      ${Object.entries(imp.map).filter(([, c]) => c !== null).length ? '' : ''}
+      ${!mapOk ? `<p class="msg msg-err mt">${imp.map.category === null ? 'Choose the column that names each cost category. ' : ''}${!moneyMapped ? 'Choose at least one column with amounts (budget, spent or forecast).' : ''}</p>` : imp.map.estimate === null ? '<p class="msg mt">No budget column chosen. Costs will come in without a budget, so SiteSense can’t tell what went over until you add one.</p>' : ''}
       ${unmappedNote(headers, ncols, colName)}
-    </section>
+      <div class="fgrid mt">
+        <div class="field"><label class="field-label" for="imp-unit">Amounts are in</label><select id="imp-unit">${Object.entries(UNITS).map(([k, l]) => `<option value="${k}" ${k === imp.unit ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="field-hint">Guessed from your numbers</span></div>
+      </div>
+      <details class="more">
+        <summary>Wrong sheet or header row?</summary>
+        <div class="fgrid">
+          ${imp.data.sheets.length > 1 ? `<div class="field"><label class="field-label" for="imp-sheet">Sheet</label><select id="imp-sheet">${imp.data.sheets.map((s, i) => `<option value="${i}" ${i === imp.sheetIdx ? 'selected' : ''}>${esc(s.name)} (${s.rows.length} rows)</option>`).join('')}</select></div>` : `<div class="field"><span class="field-label">Sheet</span><span class="small">${esc(sheet.name)}</span></div>`}
+          <div class="field"><label class="field-label" for="imp-header">Column names are on row</label><span class="input-wrap sm"><input id="imp-header" type="text" inputmode="numeric" value="${imp.headerIdx + 1 + (sheet.offset || 0)}"></span></div>
+        </div>
+      </details>
+    </section>`;
 
-    ${mapOk ? `
+  const step2 = `
     <section class="card pad">
-      <div class="card-head"><h2 class="h3">3. Projects</h2></div>
+      <div class="card-head"><h2 class="h3">Which project are these costs for?</h2></div>
       <div class="seg-stack" role="radiogroup" aria-label="Which project do these rows belong to">
-        <label class="radio-card ${imp.target.mode === 'column' ? 'is-on' : ''}"><input type="radio" name="tmode" value="column" ${imp.target.mode === 'column' ? 'checked' : ''} ${imp.map.project === null ? 'disabled' : ''}><span><b>Use the project name column</b><span class="tiny subtle block">${imp.map.project === null ? 'Map a project name column above to use this' : 'Rows are matched to existing projects by name; new names create projects'}</span></span></label>
-        <label class="radio-card ${imp.target.mode === 'existing' ? 'is-on' : ''}"><input type="radio" name="tmode" value="existing" ${imp.target.mode === 'existing' ? 'checked' : ''} ${existingProjects.length ? '' : 'disabled'}><span><b>Add to an existing project</b><span class="tiny subtle block">All rows go to one project</span></span></label>
-        <label class="radio-card ${imp.target.mode === 'new' ? 'is-on' : ''}"><input type="radio" name="tmode" value="new" ${imp.target.mode === 'new' ? 'checked' : ''}><span><b>Create a new project</b><span class="tiny subtle block">All rows go to a new project</span></span></label>
+        ${imp.map.project !== null ? `<label class="radio-card ${imp.target.mode === 'column' ? 'is-on' : ''}"><input type="radio" name="tmode" value="column" ${imp.target.mode === 'column' ? 'checked' : ''}><span><b>The project named on each row</b><span class="tiny subtle block">Matches existing projects by name; new names become new projects</span></span></label>` : ''}
+        <label class="radio-card ${imp.target.mode === 'new' ? 'is-on' : ''}"><input type="radio" name="tmode" value="new" ${imp.target.mode === 'new' ? 'checked' : ''}><span><b>A new project</b><span class="tiny subtle block">All rows go into one new project</span></span></label>
+        <label class="radio-card ${imp.target.mode === 'existing' ? 'is-on' : ''}"><input type="radio" name="tmode" value="existing" ${imp.target.mode === 'existing' ? 'checked' : ''} ${existingProjects.length ? '' : 'disabled'}><span><b>A project I already have</b><span class="tiny subtle block">${existingProjects.length ? 'All rows go into it' : 'You don’t have any projects yet'}</span></span></label>
       </div>
       ${imp.target.mode === 'existing' ? `<div class="field mt"><label class="field-label" for="imp-proj">Project</label><select id="imp-proj">${existingProjects.map(p => `<option value="${p.id}" ${p.id === imp.target.id ? 'selected' : ''}>${esc(p.meta.name)}</option>`).join('')}</select></div>` : ''}
-      ${imp.target.mode === 'new' ? `<div class="fgrid mt"><div class="field"><label class="field-label" for="imp-newname">Project name</label><input id="imp-newname" type="text" value="${esc(imp.target.name || '')}"></div><div class="field"><label class="field-label" for="imp-newstatus">Status</label><select id="imp-newstatus">${Object.entries(STATUSES).map(([k, l]) => `<option value="${k}" ${k === imp.target.status ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="field-hint">Completed projects' actual costs are treated as final</span></div></div>` : ''}
-      ${imp.target.mode === 'column' && imp.map.project !== null ? `<div class="table-wrap mt"><table class="table compact"><thead><tr><th>Project in file</th><th class="num">Rows</th><th>Match</th><th>Status for new projects</th></tr></thead><tbody>${projNames.map(n => { const ex = Store.findByName(n); const cnt = included.filter(r => projectNameFor(r) === n).length; return `<tr><td>${esc(n)}</td><td class="num">${cnt}</td><td>${ex ? `<span class="chip-static st-within">Existing project</span>` : '<span class="chip-static st-review">New project</span>'}</td><td>${ex ? `<span class="tiny subtle">${STATUSES[ex.meta.status]}</span>` : `<select data-newstatus="${esc(n)}" aria-label="Status for ${esc(n)}">${Object.entries(STATUSES).map(([k, l]) => `<option value="${k}" ${(imp.newStatus[n] || 'completed') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}</td></tr>`; }).join('')}</tbody></table></div>` : ''}
-      <fieldset class="fgroup"><legend>If a category already exists in the project</legend>
-        <div class="check-col">
-          <label class="check-row"><input type="radio" name="emode" value="update" ${imp.existingMode === 'update' ? 'checked' : ''}> Update the existing line when the category and period match (blank cells don't overwrite)</label>
-          <label class="check-row"><input type="radio" name="emode" value="add" ${imp.existingMode === 'add' ? 'checked' : ''}> Always add as new lines</label>
-        </div>
-      </fieldset>
+      ${imp.target.mode === 'new' ? `<div class="fgrid mt"><div class="field"><label class="field-label" for="imp-newname">Project name</label><input id="imp-newname" type="text" value="${esc(imp.target.name || '')}"></div><div class="field"><label class="field-label" for="imp-newstatus">Stage</label><select id="imp-newstatus">${Object.entries({ completed: 'Finished', active: 'Under construction', proposed: 'Planning' }).map(([k, l]) => `<option value="${k}" ${k === imp.target.status ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="field-hint">For a finished project, “spent” is treated as the final cost</span></div></div>` : ''}
+      ${imp.target.mode === 'column' ? `<div class="table-wrap mt"><table class="table compact"><thead><tr><th>Project in your file</th><th class="num">Rows</th><th></th><th>Stage</th></tr></thead><tbody>${projNames.map(n => { const ex = Store.findByName(n); const cnt = included.filter(r => projectNameFor(r) === n).length; return `<tr><td>${esc(n)}</td><td class="num">${cnt}</td><td>${ex ? '<span class="chip-static st-within">Already in SiteSense</span>' : '<span class="chip-static st-review">Will be created</span>'}</td><td>${ex ? `<span class="tiny subtle">${STATUSES[ex.meta.status]}</span>` : `<select data-newstatus="${esc(n)}" aria-label="Stage for ${esc(n)}">${Object.entries({ completed: 'Finished', active: 'Under construction', proposed: 'Planning' }).map(([k, l]) => `<option value="${k}" ${(imp.newStatus[n] || 'completed') === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}</td></tr>`; }).join('')}</tbody></table></div>` : ''}
     </section>
-
     <section class="card pad">
-      <div class="card-head"><h2 class="h3">4. Standardise categories</h2><span class="tiny subtle">${rawCats.length} names in the file</span></div>
-      <p class="small muted">Different spreadsheets name the same cost differently. Map each name to a standard category so projects can be compared. Your original name is kept on every line.</p>
-      <div class="table-wrap"><table class="table compact">
-        <thead><tr><th scope="col">Name in your file</th><th scope="col" class="num">Rows</th><th scope="col">Standard category</th></tr></thead>
-        <tbody>${rawCats.map(c => `<tr><td>${esc(c)}</td><td class="num">${rows.filter(r => r.rawCategory === c).length}</td><td><select data-cat="${esc(c)}" aria-label="Standard category for ${esc(c)}" class="${imp.catMap[c].confident ? '' : 'needs-check'}">${CATEGORIES.map(k => `<option value="${k.key}" ${k.key === imp.catMap[c].key ? 'selected' : ''}>${k.label}</option>`).join('')}</select>${imp.catMap[c].confident ? '' : ' <span class="tiny flag-note">Check: no clear match</span>'}</td></tr>`).join('')}</tbody>
-      </table></div>
-    </section>
+      <div class="card-head"><h2 class="h3">Match your category names</h2><span class="tiny subtle">${unsure.length ? `${plural(unsure.length, 'name')} to check` : 'All matched'}</span></div>
+      <p class="small muted">So projects can be compared, each of your names is matched to a standard category. Your original name is kept too.</p>
+      ${unsure.length ? `<div class="table-wrap"><table class="table compact"><thead><tr><th scope="col">Your name</th><th scope="col" class="num">Rows</th><th scope="col">Standard category</th></tr></thead><tbody>${unsure.map(catRow).join('')}</tbody></table></div>` : ''}
+      ${sure.length ? `<details class="more" ${unsure.length ? '' : 'open'}><summary>${plural(sure.length, 'name')} matched automatically</summary><div class="table-wrap"><table class="table compact"><thead><tr><th scope="col">Your name</th><th scope="col" class="num">Rows</th><th scope="col">Standard category</th></tr></thead><tbody>${sure.map(catRow).join('')}</tbody></table></div></details>` : ''}
+    </section>`;
 
+  const step3 = `
     <section class="card pad">
-      <div class="card-head"><h2 class="h3">5. Review rows</h2>
-        <div class="filters" role="group" aria-label="Rows to show"><button class="chip ${filter === 'issues' ? 'is-on' : ''}" data-rowfilter="issues" aria-pressed="${filter === 'issues'}">Needs attention <span class="count">${rows.filter(r => r.errors.length || r.warnings.length || !r.include).length}</span></button><button class="chip ${filter === 'all' ? 'is-on' : ''}" data-rowfilter="all" aria-pressed="${filter === 'all'}">All rows <span class="count">${rows.length}</span></button></div>
+      <div class="card-head"><h2 class="h3">Check before importing</h2>
+        <div class="filters" role="group" aria-label="Rows to show"><button class="chip ${filter === 'issues' ? 'is-on' : ''}" data-rowfilter="issues" aria-pressed="${filter === 'issues'}">Needs a look <span class="count">${attention.length}</span></button><button class="chip ${filter === 'all' ? 'is-on' : ''}" data-rowfilter="all" aria-pressed="${filter === 'all'}">All rows <span class="count">${rows.length}</span></button></div>
       </div>
       <div class="imp-stats">
-        <div><b>${included.length}</b><span class="tiny subtle">to import</span></div>
-        <div><b class="${errRows.length ? 'neg' : ''}">${errRows.length}</b><span class="tiny subtle">with invalid values</span></div>
-        <div><b>${warnRows.length}</b><span class="tiny subtle">with warnings</span></div>
-        <div><b>${excluded.length}</b><span class="tiny subtle">excluded</span></div>
+        <div><b>${included.length}</b><span class="tiny subtle">rows will be imported</span></div>
+        <div><b class="${errRows.length ? 'neg' : ''}">${errRows.length}</b><span class="tiny subtle">have a value that isn’t a number</span></div>
+        <div><b>${warnRows.length}</b><span class="tiny subtle">have something missing</span></div>
+        <div><b>${excluded.length}</b><span class="tiny subtle">left out</span></div>
       </div>
-      <p class="tiny subtle">Invalid values are imported as missing (not zero) and the original text is kept as a note on the line. Untick a row to exclude it; excluded rows are listed in the import summary.</p>
+      <p class="tiny subtle">Untick a row to leave it out. Values that aren’t numbers come in as blank (never as zero) with a note, so nothing is lost. Totals and exact duplicates are left out for you; tick them to include.</p>
       ${shownRows.length ? `<div class="table-wrap"><table class="table compact imp-rows">
-        <thead><tr><th scope="col">Import</th><th scope="col" class="num">Row</th>${imp.target.mode === 'column' ? '<th scope="col">Project</th>' : ''}<th scope="col">Category</th>${COST_FIELDS.filter(f => f.money && imp.map[f.key] !== null).map(f => `<th scope="col" class="num">${esc(f.label.replace(' cost', '').replace('Original estimated', 'Estimate'))}</th>`).join('')}<th scope="col">Issues</th></tr></thead>
+        <thead><tr><th scope="col">Import</th><th scope="col" class="num">Row</th>${imp.target.mode === 'column' ? '<th scope="col">Project</th>' : ''}<th scope="col">Category</th>${moneyCols.map(f => `<th scope="col" class="num">${label(f)}</th>`).join('')}<th scope="col">What to check</th></tr></thead>
         <tbody>${shownRows.slice(0, 300).map(r => `<tr class="${!r.include ? 'is-excluded' : r.errors.length ? 'has-error' : ''}">
           <td><input type="checkbox" data-include="${r.rowNum}" ${r.include ? 'checked' : ''} aria-label="Import row ${r.rowNum}"></td>
           <td class="num">${r.rowNum}</td>
           ${imp.target.mode === 'column' ? `<td>${esc(r.project || '—')}</td>` : ''}
           <td>${esc(r.rawCategory || '—')}${r.rawCategory ? `<span class="tiny subtle block">→ ${esc(catLabel(imp.catMap[r.rawCategory].key))}</span>` : ''}</td>
-          ${COST_FIELDS.filter(f => f.money && imp.map[f.key] !== null).map(f => `<td class="num">${isNum(r.values[f.key]) ? cr(r.values[f.key]) : r.raw[f.key] !== undefined && r.raw[f.key] !== '' && !isNum(r.values[f.key]) ? `<span class="neg tiny">“${esc(r.raw[f.key])}”</span>` : '<span class="subtle">—</span>'}</td>`).join('')}
-          <td class="issues">${[...r.errors.map(e => `<span class="neg">${esc(e)}</span>`), ...r.warnings.map(w => `<span class="flag-note">${esc(w)}</span>`)].join('<br>') || '<span class="subtle">—</span>'}</td>
-        </tr>`).join('')}</tbody></table></div>${shownRows.length > 300 ? `<p class="tiny subtle">Showing the first 300 of ${shownRows.length} rows.</p>` : ''}` : '<p class="small muted">No rows need attention.</p>'}
-    </section>
+          ${moneyCols.map(f => `<td class="num">${isNum(r.values[f.key]) ? cr(r.values[f.key]) : r.raw[f.key] !== undefined && r.raw[f.key] !== '' ? `<span class="neg tiny">“${esc(r.raw[f.key])}”</span>` : '<span class="subtle">—</span>'}</td>`).join('')}
+          <td class="issues">${[...r.errors.map(e => `<span class="neg">${esc(e)}</span>`), ...r.warnings.map(w => `<span class="flag-note">${esc(w)}</span>`)].join('<br>') || '<span class="pos">Looks fine</span>'}</td>
+        </tr>`).join('')}</tbody></table></div>${shownRows.length > 300 ? `<p class="tiny subtle">Showing the first 300 of ${shownRows.length} rows.</p>` : ''}` : '<p class="msg">Everything looks fine. Nothing needs a look.</p>'}
+      <details class="more">
+        <summary>If a category is already in the project</summary>
+        <div class="check-col">
+          <label class="check-row"><input type="radio" name="emode" value="update" ${imp.existingMode === 'update' ? 'checked' : ''}> Update it with the new figures (blank cells don’t overwrite)</label>
+          <label class="check-row"><input type="radio" name="emode" value="add" ${imp.existingMode === 'add' ? 'checked' : ''}> Add the rows as new lines</label>
+        </div>
+      </details>
+    </section>`;
 
+  view().innerHTML = `
+    ${pageHead('Upload costs', `<b>${esc(imp.data.fileName)}</b> · ${plural(rows.length, 'row')} found`, '<button class="btn btn-quiet btn-sm" data-imp="reset">Use a different file</button>')}
+    ${stepper}
+    ${step === 1 ? step1 : step === 2 ? step2 : step3}
     <div class="import-bar card">
-      <span class="small">${plural(included.length, 'row')} into ${imp.target.mode === 'column' ? plural(projNames.length, 'project') : `“${esc(projNames[0] || '')}”`}${excluded.length ? ` · ${excluded.length} excluded` : ''}</span>
-      <div class="btn-row"><button class="btn btn-quiet" data-imp="reset">Cancel</button><button class="btn btn-primary" data-imp="go" ${included.length && targetOk ? '' : 'disabled'}>Import ${plural(included.length, 'row')}</button></div>
-    </div>` : ''}`;
+      ${step > 1 ? '<button class="btn btn-secondary" data-imp="back">Back</button>' : '<button class="btn btn-quiet" data-imp="reset">Cancel</button>'}
+      <span class="small subtle">Step ${step} of 3</span>
+      ${step < 3
+        ? `<button class="btn btn-primary" data-imp="next" ${(step === 1 ? mapOk : targetOk) ? '' : 'disabled'}>Next</button>`
+        : `<button class="btn btn-primary" data-imp="go" ${included.length && targetOk ? '' : 'disabled'}>Import ${plural(included.length, 'row')}</button>`}
+    </div>`;
 
   bindImportSteps();
+  const nb = $('[data-imp="next"]'); if (nb) nb.addEventListener('click', () => { imp.step = step + 1; renderImportSteps(); window.scrollTo(0, 0); });
+  const bb = $('[data-imp="back"]'); if (bb) bb.addEventListener('click', () => { imp.step = step - 1; renderImportSteps(); window.scrollTo(0, 0); });
+  $$('[data-imp-goto]').forEach(b => b.addEventListener('click', () => { imp.step = Number(b.dataset.impGoto); renderImportSteps(); }));
 }
 
 function unmappedNote(headers, ncols, colName) {
   const used = new Set(Object.values(imp.map).filter(c => c !== null));
   const un = Array.from({ length: ncols }, (_, c) => c).filter(c => !used.has(c) && headers[c] !== null && headers[c] !== undefined && String(headers[c]).trim());
-  return un.length ? `<p class="tiny subtle mt">Not imported: ${un.map(c => `“${esc(colName(c))}”`).join(', ')}. Map them above if they hold cost data.</p>` : '';
+  return un.length ? `<p class="tiny subtle mt">Columns not used: ${un.map(c => `“${esc(colName(c))}”`).join(', ')}.</p>` : '';
 }
 
 function bindImportSteps() {
@@ -288,20 +309,20 @@ function renderImportSummary() {
   const s = imp.summary;
   viewCleanup.push(() => { if (imp && imp.summary === s) imp = null; });
   view().innerHTML = `
-    ${pageHead('Import complete', `<b>${esc(s.fileName)}</b> · sheet ${esc(s.sheetName)}`)}
+    ${pageHead('Done! Your costs are in', `<b>${esc(s.fileName)}</b> · sheet ${esc(s.sheetName)}`)}
     <section class="card pad">
       <div class="imp-stats">
         <div><b>${s.included}</b><span class="tiny subtle">rows imported</span></div>
         <div><b>${sum(s.projects.map(p => p.added))}</b><span class="tiny subtle">lines added</span></div>
         <div><b>${sum(s.projects.map(p => p.updated))}</b><span class="tiny subtle">lines updated</span></div>
-        <div><b>${sum(s.projects.map(p => p.flagged))}</b><span class="tiny subtle">rows with notes to review</span></div>
-        <div><b>${s.excluded.length}</b><span class="tiny subtle">rows excluded</span></div>
+        <div><b>${sum(s.projects.map(p => p.flagged))}</b><span class="tiny subtle">rows with notes to check</span></div>
+        <div><b>${s.excluded.length}</b><span class="tiny subtle">rows left out</span></div>
       </div>
       <div class="table-wrap mt"><table class="table compact"><thead><tr><th>Project</th><th></th><th class="num">Added</th><th class="num">Updated</th><th class="num">With notes</th><th></th></tr></thead>
-        <tbody>${s.projects.map(p => `<tr><td>${esc(p.name)}</td><td>${p.created ? '<span class="chip-static st-review">New project</span>' : '<span class="chip-static st-within">Existing project</span>'}</td><td class="num">${p.added}</td><td class="num">${p.updated}</td><td class="num">${p.flagged}</td><td class="num"><a class="btn btn-secondary btn-sm" href="#/p/${p.id}/costs">Open cost analysis</a></td></tr>`).join('')}</tbody></table></div>
-      ${s.excluded.length ? `<p class="meta-label mt">Excluded rows (not imported)</p><ul class="small muted excl-list">${s.excluded.map(x => `<li>Row ${x.rowNum}${x.category ? ` (“${esc(x.category)}”)` : ''}: ${esc(x.why)}</li>`).join('')}</ul>` : ''}
-      ${s.projects.some(p => p.created) ? '<p class="small mt">New projects were created with only a name and status. Add the development type, location, area and price basis year in each project’s Details so they can be benchmarked.</p>' : ''}
-      <div class="btn-row mt"><button class="btn btn-primary" data-imp="again">Import another file</button><a class="btn btn-secondary" href="#/overview">Go to overview</a></div>
+        <tbody>${s.projects.map(p => `<tr><td>${esc(p.name)}</td><td>${p.created ? '<span class="chip-static st-review">New project</span>' : '<span class="chip-static st-within">Existing project</span>'}</td><td class="num">${p.added}</td><td class="num">${p.updated}</td><td class="num">${p.flagged}</td><td class="num"><a class="btn btn-secondary btn-sm" href="#/p/${p.id}/costs">See its costs</a></td></tr>`).join('')}</tbody></table></div>
+      ${s.excluded.length ? `<p class="meta-label mt">Rows left out</p><ul class="small muted excl-list">${s.excluded.map(x => `<li>Row ${x.rowNum}${x.category ? ` (“${esc(x.category)}”)` : ''}: ${esc(x.why)}</li>`).join('')}</ul>` : ''}
+      ${s.projects.some(p => p.created) ? '<p class="small mt">New projects were created with just a name. Add the building type, location and area in each project’s Details so it can be compared with future projects.</p>' : ''}
+      <div class="btn-row mt"><button class="btn btn-primary" data-imp="again">Upload another file</button><a class="btn btn-secondary" href="#/overview">Go to Home</a></div>
     </section>`;
   $('[data-imp="again"]').addEventListener('click', () => { const pid = imp.presetId; imp = { presetId: pid }; renderImport(); });
 }

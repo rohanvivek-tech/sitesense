@@ -26,9 +26,9 @@
           <button data-action="scroll" data-target="features">Features</button>
           <button data-action="scroll" data-target="how">How it works</button>
           <button data-action="scroll" data-target="principles">Principles</button>
-          <a href="#/about">Methodology</a>
+          <a href="#/learn">How to use it</a>
         </nav>
-        <div class="l-nav-cta"><a class="btn btn-quiet btn-sm" href="#/projects">Open app</a><a class="btn btn-primary btn-sm" href="#/overview">Explore SiteSense</a></div>
+        <div class="l-nav-cta"><a class="btn btn-quiet btn-sm" href="#/signin">Sign in</a><a class="btn btn-primary btn-sm" href="#/overview">Explore SiteSense</a></div>
         <button class="nav-toggle" id="landing-toggle" data-action="landing-menu" aria-expanded="false" aria-controls="landing-links" aria-label="Menu"><span></span><span></span></button>
       </div>
     </header>
@@ -42,6 +42,9 @@
     </footer>
   </div>
 
+  <!-- Sign in -->
+  <div id="signin-shell" hidden><main id="signin" tabindex="-1"></main></div>
+
   <!-- App -->
   <div id="app-shell" class="app" hidden>
     <aside class="sidebar" id="sidebar" aria-label="Product navigation">
@@ -50,16 +53,17 @@
         <span>SiteSense</span>
       </a>
       <nav class="side-nav">
-        <a href="#/overview" data-nav="overview">Overview</a>
+        <a href="#/learn" data-nav="learn" class="side-start"><span aria-hidden="true">★</span> Watch the guide</a>
+        <a href="#/overview" data-nav="overview">Home</a>
         <a href="#/projects" data-nav="projects">Projects</a>
-        <a href="#/benchmarks" data-nav="benchmarks">Benchmarks</a>
-        <a href="#/insights" data-nav="insights">Variance insights</a>
-        <a href="#/import" data-nav="import">Data imports</a>
+        <a href="#/benchmarks" data-nav="benchmarks">Check a budget</a>
+        <a href="#/insights" data-nav="insights">Lessons learned</a>
+        <a href="#/import" data-nav="import">Upload data</a>
         <span class="side-sep" aria-hidden="true"></span>
         <a href="#/settings" data-nav="settings">Settings</a>
-        <a href="#/about" data-nav="about">Methodology</a>
+        <a href="#/about" data-nav="about">Help</a>
       </nav>
-      <div class="side-foot"><a class="btn btn-primary btn-sm btn-block" href="#/projects/new">New project</a><p class="tiny subtle">Data is stored in this browser.</p></div>
+      <div class="side-foot"><a class="btn btn-primary btn-sm btn-block" href="#/projects/new">New project</a><a class="user-chip" id="user-chip" href="#/settings" aria-label="Your details and settings"></a><button class="btn btn-quiet btn-sm btn-block" data-action="sign-out">Sign out</button></div>
     </aside>
     <div class="app-main">
       <header class="topbar">
@@ -79,6 +83,7 @@
   <script src="js/model.js"></script>
   <script src="js/costs.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/import.js"></script>
   <script src="js/app.js"></script>
@@ -87,5 +92,6 @@
   <script src="js/views/project.js"></script>
   <script src="js/views/costimport.js"></script>
   <script src="js/views/landing.js"></script>
+  <script src="js/views/signin.js"></script>
 </body>
 </html>

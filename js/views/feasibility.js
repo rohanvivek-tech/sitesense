@@ -232,9 +232,9 @@ function irrBars(base, lr, hurdle) {
 }
 
 function renderReforecasts(p, body, sub) {
-  const intro = `<p class="small muted tab-intro">Re-forecast the feasibility when a cost report arrives or prices move: enter price changes and any schedule slip, explain each variance, and see the updated equity IRR.</p>`;
+  const intro = `<p class="small muted tab-intro">When prices or the schedule change, enter the change here. SiteSense shows the new profit and return, and asks you to note the reason for each change.</p>`;
   if (!p.updates.length) {
-    body.innerHTML = `<div class="empty card"><h2>No re-forecasts yet</h2><p class="muted">When a cost report arrives or prices move, create a re-forecast. Enter the price changes and any schedule slip, explain each variance, and SiteSense recalculates the return.</p><button class="btn btn-primary" data-action="new-update">Create re-forecast</button></div>`;
+    body.innerHTML = `<div class="empty card"><h3 class="h3">No price updates yet</h3><p class="muted">When a supplier raises a price or the schedule slips, add an update to see how much it changes the profit.</p><button class="btn btn-primary" data-action="new-update">Add a price update</button></div>`;
     return;
   }
   const u = p.updates.find(x => x.id === sub) || p.updates[p.updates.length - 1];
@@ -251,7 +251,7 @@ function renderReforecasts(p, body, sub) {
   body.innerHTML = `${intro}
     <div class="rf-layout">
       <aside class="rf-list">
-        <div class="rf-list-head"><span class="meta-label">Re-forecasts</span><button class="btn btn-quiet btn-sm" data-action="new-update">New</button></div>
+        <div class="rf-list-head"><span class="meta-label">Updates</span><button class="btn btn-quiet btn-sm" data-action="new-update">New</button></div>
         ${[...p.updates].reverse().map(x => { const r = runModel(a, x); return `<a class="rf-item ${x.id === u.id ? 'is-active' : ''}" href="#/p/${p.id}/reforecast/${x.id}"><b>${esc(x.label)}</b><span class="tiny subtle">${fmtDate(x.date)} · ${pct(r.irr)}${isApproved(p, x) ? ' · approved' : ' · draft'}</span></a>`; }).join('')}
       </aside>
       <div class="rf-main">
@@ -263,14 +263,14 @@ function renderReforecasts(p, body, sub) {
           <div class="rf-stage">
             <span class="field-label" id="stage-l">Stage</span>
             <div class="seg" role="radiogroup" aria-labelledby="stage-l">
-              <label><input type="radio" name="commit" value="pre" ${u.commit === 'pre' ? 'checked' : ''}><span>Before commitment</span></label>
+              <label><input type="radio" name="commit" value="pre" ${u.commit === 'pre' ? 'checked' : ''}><span>Before we commit</span></label>
               <label><input type="radio" name="commit" value="milestone" ${u.commit === 'milestone' ? 'checked' : ''}><span>Under construction</span></label>
             </div>
             <div class="field inline ${u.commit === 'pre' ? 'is-hidden' : ''}" id="milestone-field"><label class="field-label" for="u-ms">at month</label>
               <span class="input-wrap sm"><input id="u-ms" type="text" inputmode="numeric" value="${u.milestone}" data-meta="milestone"></span>
               <span class="tiny subtle">of ${maxMonth + 1}</span></div>
           </div>
-          <p class="small muted">Enter the change in unit price against your feasibility budget, for example a supplier's revised rate.<span id="stage-note">${u.commit === 'pre' ? ' Before commitment, changes apply to all construction.' : ' Under construction, changes apply only to work from this month on.'}</span></p>
+          <p class="small muted">Enter how much each price has changed since the budget, for example a supplier's new rate.<span id="stage-note">${u.commit === 'pre' ? ' Before you commit, the change applies to all the construction.' : ' Under construction, it applies only to work from this month on.'}</span></p>
           <div class="sliders">
             ${slider('steel', 'Steel price change', -20, 60, '%')}
             ${slider('cement', 'Cement and ready-mix price change', -20, 50, '%')}
@@ -279,8 +279,8 @@ function renderReforecasts(p, body, sub) {
           </div>
         </section>
         <section class="card pad" id="rf-drivers"></section>
-        <section class="card pad"><div class="card-head"><h2 class="h3">Budget against re-forecast</h2></div><div class="table-wrap" id="rf-variance"></div></section>
-        <div class="rf-foot"><button class="btn btn-quiet btn-sm btn-danger-text" data-action="delete-update" data-uid="${u.id}">Delete this re-forecast</button></div>
+        <section class="card pad"><div class="card-head"><h3 class="h3">Plan against the update</h3></div><div class="table-wrap" id="rf-variance"></div></section>
+        <div class="rf-foot"><button class="btn btn-quiet btn-sm btn-danger-text" data-action="delete-update" data-uid="${u.id}">Delete this update</button></div>
       </div>
       <aside class="rf-side"><div class="side-sticky card pad" id="rf-result"></div></aside>
     </div>`;
@@ -336,7 +336,7 @@ function renderReforecasts(p, body, sub) {
     if (t.name === 'commit') {
       u.commit = t.value;
       $('#milestone-field').classList.toggle('is-hidden', u.commit === 'pre');
-      $('#stage-note').textContent = u.commit === 'pre' ? ' Before commitment, changes apply to all construction.' : ' Under construction, changes apply only to work from this month on.';
+      $('#stage-note').textContent = u.commit === 'pre' ? ' Before you commit, the change applies to all the construction.' : ' Under construction, it applies only to work from this month on.';
       saveSoon(p); refresh();
     }
     if (t.dataset.u && t.type === 'text') t.value = u[t.dataset.u];
@@ -358,12 +358,12 @@ function renderReforecasts(p, body, sub) {
 
 function renderDrivers(u, items) {
   const el = $('#rf-drivers');
-  if (!items.length) { el.innerHTML = `<div class="card-head"><h2 class="h3">Variance drivers</h2></div><p class="small muted">No variances to explain. Move a price or schedule input to see its effect.</p>`; return; }
+  if (!items.length) { el.innerHTML = `<div class="card-head"><h3 class="h3">Reasons for each change</h3></div><p class="small muted">Nothing has changed yet. Move a slider above to see the effect.</p>`; return; }
   const done = items.filter(i => u.drivers[i.id] && u.drivers[i.id].approved).length;
   el.innerHTML = `
-    <div class="card-head"><h2 class="h3">Variance drivers</h2><span class="small muted">${done} of ${items.length} approved</span></div>
+    <div class="card-head"><h3 class="h3">Reasons for each change</h3><span class="small muted">${done} of ${items.length} approved</span></div>
     <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${items.length}" aria-valuenow="${done}" aria-label="Drivers approved"><div style="width:${done / items.length * 100}%"></div></div>
-    <p class="small muted">Explain what caused each variance and cite the document it came from. The decision is only confirmed once every driver is approved.</p>
+    <p class="small muted">Write what caused each change and where it came from, then approve it. The suggested decision appears once every reason is approved.</p>
     <div class="drivers">${items.map(it => {
       const d = u.drivers[it.id] || { text: '', source: '', approved: false };
       return `
@@ -391,7 +391,7 @@ function rfVarianceRows(base, sc) {
 }
 function renderRfVariance(base, sc) {
   $('#rf-variance').innerHTML = `<table class="table">
-    <thead><tr><th scope="col">Line</th><th scope="col" class="num">Feasibility</th><th scope="col" class="num">Re-forecast</th><th scope="col" class="num">Variance</th><th scope="col" class="num">%</th></tr></thead>
+    <thead><tr><th scope="col">Line</th><th scope="col" class="num">Plan</th><th scope="col" class="num">Updated</th><th scope="col" class="num">Difference</th><th scope="col" class="num">%</th></tr></thead>
     <tbody>${rfVarianceRows(base, sc).map(([l, b, a, total]) => {
       const v = a - b, tiny = Math.abs(v) < 0.05, tone = tiny ? '' : v > 0 ? 'neg' : 'pos';
       return `<tr class="${total ? 'total' : ''}"><th scope="row">${l}</th><td class="num">${cr(b)}</td><td class="num">${cr(a)}</td><td class="num ${tone}">${tiny ? '—' : crSigned(v)}</td><td class="num ${tone}">${tiny || !b ? '—' : pctSigned(v / b)}</td></tr>`;
@@ -416,7 +416,7 @@ function renderRfResult(p, u, base, sc, items) {
     </dl>
     <div class="decision decision-${approved ? dec.key : 'pending'}">
       <span class="decision-label">${approved ? dec.label : 'Pending review'}</span>
-      <span class="decision-note">${approved ? `${dec.note} of ${pct(a.hurdle)}` : `Approve ${plural(items.length - items.filter(i => u.drivers[i.id] && u.drivers[i.id].approved).length, 'more driver')} to confirm`}</span>
+      <span class="decision-note">${approved ? `${dec.note} of ${pct(a.hurdle)}` : `Approve ${plural(items.length - items.filter(i => u.drivers[i.id] && u.drivers[i.id].approved).length, 'more reason')} to confirm`}</span>
     </div>
     <div class="summary"><span class="badge">Summary</span><p>${esc(autoSummary(a, base, sc, u, items, approved))}</p></div>
     <p class="tiny subtle">Indicative only. Go, hold or re-scope compares the re-forecast IRR with your hurdle; the decision stays with you.</p>`;
