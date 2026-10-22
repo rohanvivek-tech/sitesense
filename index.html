@@ -63,7 +63,7 @@
         <a href="#/settings" data-nav="settings">Settings</a>
         <a href="#/about" data-nav="about">Help</a>
       </nav>
-      <div class="side-foot"><a class="btn btn-primary btn-sm btn-block" href="#/projects/new">New project</a><a class="user-chip" id="user-chip" href="#/settings" aria-label="Your details and settings"></a><button class="btn btn-quiet btn-sm btn-block" data-action="sign-out">Sign out</button></div>
+      <div class="side-foot"><a class="btn btn-primary btn-sm btn-block" href="#/projects/new">New project</a><a class="user-chip" id="user-chip" href="#/settings" aria-label="Your details and settings"></a><span class="tiny subtle sync-state" id="sync-state" role="status"></span><button class="btn btn-quiet btn-sm btn-block" data-action="sign-out">Sign out</button></div>
     </aside>
     <div class="app-main">
       <header class="topbar">
@@ -83,7 +83,9 @@
   <script src="js/model.js"></script>
   <script src="js/costs.js"></script>
   <script src="js/store.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/profile.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/import.js"></script>
   <script src="js/app.js"></script>

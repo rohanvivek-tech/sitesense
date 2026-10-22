@@ -1,11 +1,14 @@
-// The person using SiteSense on this device. Saved only in this browser; there is no server or password.
+// The person using SiteSense. A copy is cached in this browser so the app opens instantly;
+// the account itself (email + password) lives in Supabase, see js/cloud.js.
 
 const Profile = (() => {
   const KEY = 'sitesense.profile.v1';
   const get = () => { try { const p = JSON.parse(localStorage.getItem(KEY)); return p && p.name ? p : null; } catch { return null; } };
-  const save = p => { try { localStorage.setItem(KEY, JSON.stringify({ ...p, savedAt: new Date().toISOString() })); return true; } catch { return false; } };
+  // setLocal only updates the cached copy; save also sends the change to the account.
+  const setLocal = p => { try { localStorage.setItem(KEY, JSON.stringify({ ...p, savedAt: new Date().toISOString() })); return true; } catch { return false; } };
+  const save = p => { const ok = setLocal(p); if (typeof Cloud !== 'undefined') Cloud.queueProfile(); return ok; };
   const clear = () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } };
-  return { get, save, clear };
+  return { get, save, setLocal, clear };
 })();
 
 const PROFILE_FIELDS = [

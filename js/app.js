@@ -240,7 +240,7 @@ document.addEventListener('click', async e => {
     case 'landing-menu': { const n = $('#landing-nav'); const open = !n.classList.contains('nav-open'); n.classList.toggle('nav-open', open); el.setAttribute('aria-expanded', String(open)); break; }
     case 'load-demo': loadDemo(); go('overview'); break;
     case 'sign-out':
-      if (await askConfirm({ title: 'Sign out?', message: 'Your details will be removed from this device. Your projects stay saved in this browser.', confirmLabel: 'Sign out' })) { Profile.clear(); toast('Signed out'); go('signin'); }
+      if (await askConfirm({ title: 'Sign out?', message: 'Your projects stay safe in your account. Sign in again any time to open them.', confirmLabel: 'Sign out' })) { if (await Cloud.signOut()) { toast('Signed out'); go('signin'); } else toast('Your latest changes could not be saved yet. Please check your internet and try again.', 'err'); }
       break;
     case 'remove-demo':
       if (await askConfirm({ title: 'Remove the sample data?', message: 'All projects labelled “Demo” will be removed. Your own projects are not affected.', confirmLabel: 'Remove sample data', danger: true })) { Store.removeDemo(); toast('Sample data removed'); render(); }
@@ -254,7 +254,7 @@ document.addEventListener('click', async e => {
     case 'manual': draft = { assumptions: { ...defaultAssumptions(), ...(el.dataset.prefill && p ? p.assumptions : {}) }, sources: null, checksum: { status: 'none' }, mode: 'manual' }; go('projects/new/review'); break;
     case 'dup': { const c = Store.duplicate(el.dataset.id); if (c) { toast('Project duplicated'); render(); } break; }
     case 'delete':
-      if (p && await askConfirm({ title: `Delete “${p.meta.name}”?`, message: 'This permanently removes the project and all its costs, reasons and scenarios from this browser. It can’t be undone.', confirmLabel: 'Delete project', danger: true })) { Store.remove(p.id); toast('Project deleted'); go('projects'); }
+      if (p && await askConfirm({ title: `Delete “${p.meta.name}”?`, message: 'This permanently removes the project and all its costs, reasons and scenarios from your account. It can’t be undone.', confirmLabel: 'Delete project', danger: true })) { Store.remove(p.id); toast('Project deleted'); go('projects'); }
       break;
     case 'export-json': if (p) exportJson(p); break;
     case 'export-csv': if (p) exportCsv(p); break;
@@ -269,7 +269,7 @@ document.addEventListener('click', async e => {
       break;
     case 'export-workspace': download(`sitesense-workspace-${Store.today()}.json`, JSON.stringify(Store.exportWorkspace(), null, 2), 'application/json'); break;
     case 'clear-all':
-      if (await askConfirm({ title: 'Delete everything?', message: 'Every project in this browser, including your own, will be removed for good. Back up your workspace first if you want a copy.', confirmLabel: 'Delete everything', danger: true })) { Store.clearAll(); toast('All data deleted'); go('overview'); }
+      if (await askConfirm({ title: 'Delete everything?', message: 'Every project in your account, including your own, will be removed for good. Back up your workspace first if you want a copy.', confirmLabel: 'Delete everything', danger: true })) { Store.clearAll(); toast('All data deleted'); go('overview'); }
       break;
   }
 });
@@ -290,4 +290,4 @@ document.addEventListener('change', async e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeMenus(); hideHelp(); $$('details.menu[open]').forEach(d => { d.open = false; }); } });
 window.addEventListener('afterprint', () => { $('#print-root').innerHTML = ''; });
 window.addEventListener('hashchange', render);
-document.addEventListener('DOMContentLoaded', () => { Store.load(); render(); });
+document.addEventListener('DOMContentLoaded', () => { Store.load(); render(); Cloud.init().then(changed => { if (changed) render(); }); });

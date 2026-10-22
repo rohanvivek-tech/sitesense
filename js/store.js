@@ -1,5 +1,5 @@
-// Workspace storage. Projects are kept in this browser's localStorage only; nothing is sent to a server.
-// Export the workspace (Settings) to back it up or move it to another device.
+// Workspace storage. Projects are cached in this browser's localStorage and, when signed in, synced to the user's account (js/cloud.js).
+// Export the workspace (Settings) to keep a file backup.
 
 const Store = (() => {
   const KEY = 'sitesense.projects.v1';
@@ -8,9 +8,13 @@ const Store = (() => {
 
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   const today = () => new Date().toISOString().slice(0, 10);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
 
   // Bring any stored project up to the current shape without losing fields.
   function normalize(p) {
+    if (!UUID_RE.test(String(p.id || ''))) p.id = newId();   // cloud rows need real ids
     p.assumptions = { ...defaultAssumptions(), ...(p.assumptions || {}) };
     const a = p.assumptions;
     const numsOk = [a.land, a.constructionRate, a.buaSqft, a.approvals, a.soft].every(v => typeof v === 'number' && Number.isFinite(v));
@@ -57,6 +61,7 @@ const Store = (() => {
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(db)); persistent = true; }
     catch { persistent = false; }
+    if (typeof Cloud !== 'undefined') Cloud.queueSync();
     return persistent;
   }
 
@@ -67,7 +72,7 @@ const Store = (() => {
 
   function create(init = {}) {
     const now = new Date().toISOString();
-    const p = normalize({ id: uid(), createdAt: now, updatedAt: now, ...init });
+    const p = normalize({ id: newId(), createdAt: now, updatedAt: now, ...init });
     db.projects.push(p);
     save();
     return p;
@@ -80,7 +85,7 @@ const Store = (() => {
     const src = get(id);
     if (!src) return null;
     const copy = JSON.parse(JSON.stringify(src));
-    copy.id = uid();
+    copy.id = newId();
     copy.meta.name = `${copy.meta.name} (copy)`;
     copy.createdAt = copy.updatedAt = new Date().toISOString();
     delete copy.demo;
@@ -92,7 +97,7 @@ const Store = (() => {
   function importProject(obj) {
     if (!obj || (!obj.assumptions && !obj.meta) || typeof obj !== 'object') throw new Error('This file is not a SiteSense project.');
     const p = normalize({
-      id: uid(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: newId(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       assumptions: obj.assumptions || {}, meta: obj.meta, source: obj.source || null,
       costLines: obj.costLines, imports: obj.imports, updates: obj.updates, scenarios: obj.scenarios,
     });
@@ -109,7 +114,7 @@ const Store = (() => {
       throw new Error('This file is not a SiteSense workspace or project.');
     }
     const added = obj.projects.map(p => {
-      const copy = normalize({ ...JSON.parse(JSON.stringify(p)), id: uid() });
+      const copy = normalize({ ...JSON.parse(JSON.stringify(p)), id: newId() });
       db.projects.push(copy);
       return copy;
     });
@@ -145,11 +150,16 @@ const Store = (() => {
   function removeDemo() { db.projects = db.projects.filter(p => !p.demo); save(); }
   function addProjects(arr) { arr.forEach(p => db.projects.push(normalize(p))); save(); }
   function clearAll() { db.projects = []; save(); }
+  // Swap in a whole workspace (from the cloud, or empty on sign-out) without pushing it back up.
+  function replaceAll(arr) {
+    db = { projects: (arr || []).map(normalize) };
+    try { localStorage.setItem(KEY, JSON.stringify(db)); persistent = true; } catch { persistent = false; }
+  }
   function bytesUsed() { try { return (localStorage.getItem(KEY) || '').length * 2; } catch { return 0; } }
 
   return {
     load, save, list, all, get, findByName, create, touch, remove, duplicate, importProject,
     exportWorkspace, importWorkspace, newUpdate, newScenario, newCostLine,
-    hasDemo, removeDemo, addProjects, clearAll, bytesUsed, uid, today, normalize, isPersistent: () => persistent,
+    hasDemo, removeDemo, addProjects, clearAll, replaceAll, bytesUsed, uid, today, normalize, isPersistent: () => persistent,
   };
 })();

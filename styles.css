@@ -938,3 +938,11 @@ button:disabled, .btn:disabled { cursor: not-allowed; }
 .est-table td.num { white-space: normal; }
 .est-table td:nth-child(5) { min-width: 150px; max-width: 240px; }
 .est-table td:nth-child(4) { min-width: 170px; }
+
+/* account sign-in tabs, password toggle, sync status */
+.si-tabs { display: flex; gap: 4px; padding: 4px; background: #F6F4EE; border-radius: 10px; margin-bottom: 16px; }
+.si-tab { flex: 1; padding: 9px 12px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-weight: 600; color: #477565; cursor: pointer; }
+.si-tab.is-on { background: #fff; color: #173D35; box-shadow: 0 1px 2px rgba(23,61,53,.15); }
+.si-show { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; }
+.sync-state { display: block; padding: 2px 4px 6px; min-height: 1.2em; text-align: center; }
+.sync-state[data-state="error"] { color: #b3261e; }

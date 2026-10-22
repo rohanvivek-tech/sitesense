@@ -17,7 +17,7 @@ Cost intelligence for commercial real estate developers. SiteSense helps develop
 
 ## Data storage
 
-Everything is stored in the browser's localStorage on the user's device. Nothing is sent to a server, and spreadsheets are parsed in the browser. Data does not sync between devices; use **Settings → Export workspace** for backups. Shared, multi-user storage would need a backend (for example a database with authentication), which is not part of this build.
+Sign-in and storage use Supabase (js/cloud.js): people create an account with email and password, and their projects are saved to their account so they open on any device. A copy is cached in the browser (localStorage) so the app opens fast. Row level security limits every person to their own rows. The Supabase URL and publishable key in js/cloud.js are public by design. Spreadsheets are still parsed in the browser.
 
 ## Files
 

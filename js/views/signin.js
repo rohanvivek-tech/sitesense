@@ -1,7 +1,9 @@
-// Sign-in page (details saved on this device) and the step-by-step guide shown once after signing in.
+// Sign-in / create-account page, and the step-by-step guide shown once after a new sign-in.
 
-function renderSignin() {
+function renderSignin(mode = 'create') {
   const existing = Profile.get();
+  const login = mode === 'login';
+  const fields = login ? PROFILE_FIELDS.filter(f => f.key === 'email') : PROFILE_FIELDS;
   const touch = {};
   $('#signin').innerHTML = `
     <div class="si-wrap">
@@ -20,12 +22,17 @@ function renderSignin() {
       <section class="si-card card" aria-labelledby="si-h">
         ${existing ? `
           <h2 id="si-h" class="si-h">Welcome back, ${esc(existing.name.split(' ')[0])}</h2>
-          <p class="muted">You’re signed in on this device as <b>${esc(existing.name)}</b> from <b>${esc(existing.company)}</b>.</p>
-          <div class="si-actions"><a class="btn btn-primary btn-lg btn-block" href="#/overview">Continue</a><button class="btn btn-quiet btn-block" data-si-switch>Not you? Sign in as someone else</button></div>` : `
-          <h2 id="si-h" class="si-h">Sign in</h2>
-          <p class="muted">Tell us a little about you to get started.</p>
+          <p class="muted">You’re signed in as <b>${esc(existing.name)}</b> from <b>${esc(existing.company)}</b>.</p>
+          <div class="si-actions"><a class="btn btn-primary btn-lg btn-block" href="#/overview">Continue</a><button class="btn btn-quiet btn-block" data-si-switch>Not you? Sign out</button></div>` : `
+          <div class="si-tabs" role="tablist">
+            <button type="button" role="tab" class="si-tab ${login ? '' : 'is-on'}" aria-selected="${!login}" data-si-mode="create">Create account</button>
+            <button type="button" role="tab" class="si-tab ${login ? 'is-on' : ''}" aria-selected="${login}" data-si-mode="login">Sign in</button>
+          </div>
+          <h2 id="si-h" class="si-h">${login ? 'Welcome back' : 'Create your account'}</h2>
+          <p class="muted">${login ? 'Sign in to open your projects.' : 'Tell us a little about you to get started.'}</p>
           <form id="si-form" novalidate>
-            ${PROFILE_FIELDS.map(f => `
+            <div id="si-error" class="banner banner-warn" role="alert" hidden></div>
+            ${fields.map(f => `
               <div class="field" data-fieldwrap="${f.key}">
                 <label class="field-label" for="si-${f.key}">${f.label}</label>
                 ${f.type === 'textarea'
@@ -33,39 +40,74 @@ function renderSignin() {
                   : `<input id="si-${f.key}" name="${f.key}" type="${f.type}" ${f.mode ? `inputmode="${f.mode}"` : ''} autocomplete="${f.auto}" placeholder="${esc(f.placeholder)}" aria-describedby="si-m-${f.key}" required>`}
                 <span class="field-msg" id="si-m-${f.key}" data-simsg="${f.key}" aria-live="polite"></span>
               </div>`).join('')}
-            <button class="btn btn-primary btn-lg btn-block" type="submit">Continue</button>
-            <p class="tiny subtle si-note">🔒 Your details stay on this device. SiteSense has no server, so nothing is sent anywhere.</p>
+            <div class="field" data-fieldwrap="password">
+              <label class="field-label" for="si-password">Password</label>
+              <input id="si-password" name="password" type="password" autocomplete="${login ? 'current-password' : 'new-password'}" placeholder="${login ? 'Your password' : 'At least 8 characters'}" aria-describedby="si-m-password" required>
+              <span class="field-msg" id="si-m-password" data-simsg="password" aria-live="polite"></span>
+              <label class="tiny subtle si-show"><input type="checkbox" id="si-showpw"> Show password</label>
+            </div>
+            <button class="btn btn-primary btn-lg btn-block" type="submit">${login ? 'Sign in' : 'Create account'}</button>
+            <p class="tiny subtle si-note">🔒 Your projects are saved to your account, so you can open them on any device. Only you can see them.</p>
           </form>`}
       </section>
     </div>`;
 
   const sw = $('[data-si-switch]');
-  if (sw) sw.addEventListener('click', () => { Profile.clear(); renderSignin(); });
+  if (sw) sw.addEventListener('click', async () => { if (await Cloud.signOut()) renderSignin(); else toast('Your latest changes could not be saved yet. Please check your internet and try again.', 'err'); });
+  $$('[data-si-mode]').forEach(b => b.addEventListener('click', () => renderSignin(b.dataset.siMode)));
   const form = $('#si-form');
   if (!form) return;
-  const read = () => Object.fromEntries(PROFILE_FIELDS.map(f => [f.key, $(`#si-${f.key}`).value]));
-  const show = (errors, onlyTouched) => PROFILE_FIELDS.forEach(f => {
-    const msg = errors[f.key] && (!onlyTouched || touch[f.key]) ? errors[f.key] : '';
-    const el = $(`[data-simsg="${f.key}"]`);
+  const keys = [...fields.map(f => f.key), 'password'];
+  const read = () => Object.fromEntries(keys.map(k => [k, $(`#si-${k}`).value]));
+  const check = () => {
+    const raw = read();
+    const r = checkProfile({ name: 'Aa', company: 'Aa', phone: '9876543210', address: 'Address line', ...raw });   // placeholders for fields not on this form
+    const errors = {};
+    fields.forEach(f => { if (r.errors[f.key]) errors[f.key] = r.errors[f.key]; });
+    if (login) { if (!raw.password) errors.password = 'Please enter your password.'; }
+    else if (raw.password.length < 8) errors.password = 'Use at least 8 characters.';
+    return { errors, values: r.values, password: raw.password, ok: !Object.keys(errors).length };
+  };
+  const show = (errors, onlyTouched) => keys.forEach(k => {
+    const msg = errors[k] && (!onlyTouched || touch[k]) ? errors[k] : '';
+    const el = $(`[data-simsg="${k}"]`);
     el.textContent = msg; el.className = `field-msg ${msg ? 'is-err' : ''}`;
-    $(`[data-fieldwrap="${f.key}"]`).classList.toggle('has-err', !!msg);
-    $(`#si-${f.key}`).setAttribute('aria-invalid', String(!!msg));
+    $(`[data-fieldwrap="${k}"]`).classList.toggle('has-err', !!msg);
+    $(`#si-${k}`).setAttribute('aria-invalid', String(!!msg));
   });
-  form.addEventListener('focusout', e => { const k = e.target.name; if (k) { touch[k] = true; show(checkProfile(read()).errors, true); } });
-  form.addEventListener('input', e => { if (touch[e.target.name]) show(checkProfile(read()).errors, true); });
-  form.addEventListener('submit', e => {
+  $('#si-showpw').addEventListener('change', e => { $('#si-password').type = e.target.checked ? 'text' : 'password'; });
+  form.addEventListener('focusout', e => { const k = e.target.name; if (k) { touch[k] = true; show(check().errors, true); } });
+  form.addEventListener('input', e => { if (touch[e.target.name]) show(check().errors, true); });
+  form.addEventListener('submit', async e => {
     e.preventDefault();
-    PROFILE_FIELDS.forEach(f => { touch[f.key] = true; });
-    const r = checkProfile(read());
+    keys.forEach(k => { touch[k] = true; });
+    const r = check();
     show(r.errors, false);
-    if (!r.ok) { const first = PROFILE_FIELDS.find(f => r.errors[f.key]); $(`#si-${first.key}`).focus(); return; }
-    if (!Profile.save(r.values)) { toast('This browser is blocking storage, so your details can’t be saved.', 'err'); return; }
-    toast(`Welcome, ${r.values.name.split(' ')[0]}!`);
-    go('overview/guide');   // every new sign-in sees the guide once
+    const err = $('#si-error'); err.hidden = true;
+    if (!r.ok) { const first = keys.find(k => r.errors[k]); $(`#si-${first}`).focus(); return; }
+    const btn = $('button[type=submit]', form);
+    btn.disabled = true; const label = btn.textContent; btn.textContent = login ? 'Signing in…' : 'Creating account…';
+    try {
+      if (login) await Cloud.signIn(r.values.email, r.password);
+      else {
+        const out = await Cloud.signUp(r.values, r.password);
+        if (out.needsConfirm) {
+          $('#si-form').innerHTML = `<h2 class="si-h">Check your email</h2><p class="muted">We sent a link to <b>${esc(r.values.email)}</b>. Click it to confirm your account, then come back and sign in.</p><button type="button" class="btn btn-primary btn-lg btn-block" data-si-mode="login">Go to sign in</button>`;
+          $('[data-si-mode="login"]', form).addEventListener('click', () => renderSignin('login'));
+          return;
+        }
+      }
+    } catch (ex) {
+      err.textContent = ex.message; err.hidden = false;
+      btn.disabled = false; btn.textContent = label;
+      return;
+    }
+    const me = Profile.get();
+    toast(`Welcome${login ? ' back' : ''}, ${(me ? me.name : r.values.name).split(' ')[0]}!`);
+    go(me && me.tourDone ? 'overview' : 'overview/guide');   // a new account sees the guide once
   });
-  $('#si-name').focus();
+  $(`#si-${fields[0].key}`).focus();
 }
-
 // ---------- step-by-step guide ----------
 const TOUR = [
   { icon: '👋', title: name => `Welcome, ${name}!`, text: 'SiteSense helps you spend money on buildings more wisely. This quick guide explains the words you will see, one at a time.', note: 'It takes about a minute.' },

@@ -309,17 +309,17 @@ function renderSettings() {
     ${storageBanner()}
     <section class="card pad">
       <div class="card-head"><h2 class="h3">Your details</h2><button class="btn btn-quiet btn-sm" data-action="sign-out">Sign out</button></div>
-      <p class="small muted">Saved only on this device. Nothing is sent anywhere.</p>
+      <p class="small muted">Saved to your account. Your email is your sign-in name, so it can’t be changed here.</p>
       <form id="pf-form" class="pf-grid" novalidate>
-        ${PROFILE_FIELDS.map(f => `<div class="field ${f.type === 'textarea' ? 'span-2' : ''}" data-fieldwrap="${f.key}"><label class="field-label" for="pf-${f.key}">${f.label}</label>${f.type === 'textarea' ? `<textarea id="pf-${f.key}" name="${f.key}" rows="2" autocomplete="${f.auto}">${esc((Profile.get() || {})[f.key] || '')}</textarea>` : `<input id="pf-${f.key}" name="${f.key}" type="${f.type}" ${f.mode ? `inputmode="${f.mode}"` : ''} autocomplete="${f.auto}" value="${esc((Profile.get() || {})[f.key] || '')}">`}<span class="field-msg" data-pfmsg="${f.key}"></span></div>`).join('')}
+        ${PROFILE_FIELDS.map(f => `<div class="field ${f.type === 'textarea' ? 'span-2' : ''}" data-fieldwrap="${f.key}"><label class="field-label" for="pf-${f.key}">${f.label}</label>${f.type === 'textarea' ? `<textarea id="pf-${f.key}" name="${f.key}" rows="2" autocomplete="${f.auto}">${esc((Profile.get() || {})[f.key] || '')}</textarea>` : `<input id="pf-${f.key}" name="${f.key}" type="${f.type}" ${f.key === 'email' ? 'readonly' : ''} ${f.mode ? `inputmode="${f.mode}"` : ''} autocomplete="${f.auto}" value="${esc((Profile.get() || {})[f.key] || '')}">`}<span class="field-msg" data-pfmsg="${f.key}"></span></div>`).join('')}
         <div class="form-actions span-2"><button class="btn btn-primary" type="submit">Save my details</button></div>
       </form>
     </section>
     <div class="two-col">
       <section class="card pad prose">
         <h2 class="h3">Where your data is stored</h2>
-        <p>Projects are stored in this browser on this device (localStorage, about ${kb} KB used). Nothing is uploaded to a server, and spreadsheets are read in your browser. Data is not shared between devices or browsers, and clearing your browser data deletes it.</p>
-        <p>Export the workspace regularly to keep a backup, or to move your projects to another device.</p>
+        <p>Your projects are saved to your SiteSense account, so you can open them on any device by signing in. Only you can see them. A copy is kept in this browser (about ${kb} KB) so the app opens quickly. Spreadsheets are read in your browser.</p>
+        <p>You can also export the workspace as a file to keep your own backup.</p>
         <div class="btn-row"><button class="btn btn-primary btn-sm" data-action="export-workspace">Export workspace</button><label class="btn btn-secondary btn-sm">Import workspace or project<input type="file" accept=".json,application/json" hidden data-action="import-json"></label></div>
       </section>
       <section class="card pad prose">
@@ -327,7 +327,7 @@ function renderSettings() {
         <p>A set of fictional projects that shows how SiteSense works. Every demo project is labelled “Demo” and is not real project data.</p>
         <div class="btn-row">${Store.hasDemo() ? '<button class="btn btn-secondary btn-sm" data-action="remove-demo">Remove demonstration data</button>' : '<button class="btn btn-secondary btn-sm" data-action="load-demo">Try with sample data</button>'}</div>
         <h2 class="h3">Delete all data</h2>
-        <p>Removes every project from this browser.</p>
+        <p>Removes every project from your account.</p>
         <div class="btn-row"><button class="btn btn-quiet btn-sm btn-danger-text" data-action="clear-all">Delete all data</button></div>
       </section>
     </div>`;
@@ -337,7 +337,7 @@ function renderSettings() {
     const r = checkProfile(Object.fromEntries(PROFILE_FIELDS.map(f => [f.key, $(`#pf-${f.key}`).value])));
     PROFILE_FIELDS.forEach(f => { const m = r.errors[f.key] || ''; const el = $(`[data-pfmsg="${f.key}"]`); el.textContent = m; el.className = `field-msg ${m ? 'is-err' : ''}`; $(`[data-fieldwrap="${f.key}"]`, form).classList.toggle('has-err', !!m); });
     if (!r.ok) { const first = PROFILE_FIELDS.find(f => r.errors[f.key]); $(`#pf-${first.key}`).focus(); return; }
-    Profile.save(r.values); renderUserChip(); toast('Your details are saved');
+    const cur = Profile.get() || {}; Profile.save({ ...cur, ...r.values, email: cur.email || r.values.email }); renderUserChip(); toast('Your details are saved');
   });
 }
 
@@ -399,7 +399,7 @@ function openProjectEditor(p) {
   dlg.addEventListener('cancel', e => { e.preventDefault(); closeDialog(dlg); });
   $('[data-pe="delete"]', dlg).addEventListener('click', async () => {
     closeDialog(dlg);
-    if (await askConfirm({ title: `Delete “${p.meta.name}”?`, message: 'This permanently removes the project and all its costs, reasons and scenarios from this browser. It can’t be undone.', confirmLabel: 'Delete project', danger: true })) {
+    if (await askConfirm({ title: `Delete “${p.meta.name}”?`, message: 'This permanently removes the project and all its costs, reasons and scenarios from your account. It can’t be undone.', confirmLabel: 'Delete project', danger: true })) {
       Store.remove(p.id); toast('Project deleted'); go('projects');
     }
   });
