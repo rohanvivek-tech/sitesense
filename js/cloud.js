@@ -6,6 +6,7 @@
 const Cloud = (() => {
   const SUPABASE_URL = 'https://pjkplveiqhtbqsgnspwd.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_gABkxy9ctpEJ0laQv99gZw_ShtwTWwa';
+  const CHAT_FUNCTION = 'clever-processor';   // slug of the assistant Edge Function (supabase/functions/chat/index.ts)
   const OWNER_KEY = 'sitesense.owner.v1';   // which account the cached projects belong to
 
   let sb = null;
@@ -205,5 +206,20 @@ const Cloud = (() => {
     return true;
   }
 
-  return { init, available, signedIn, signUp, signIn, signOut, queueSync, queueProfile, flush, setStatus };
+  // Ask the assistant (Supabase Edge Function "chat" -> Google Gemini). Needs a signed-in person.
+  async function chat(messages, context) {
+    if (!client() || !user) throw new Error('Please sign in to use the assistant.');
+    const wait = new Promise((_, rej) => setTimeout(() => rej(new Error('The assistant is taking too long. Please try again.')), 65000));
+    const { data, error } = await Promise.race([sb.functions.invoke(CHAT_FUNCTION, { body: { messages, context } }), wait]);
+    if (error) {
+      let msg = '';
+      try { const j = await error.context.json(); msg = j && j.error; } catch { /* no readable body */ }
+      if (!msg) msg = error.name === 'FunctionsFetchError' ? 'We can’t reach the assistant. Check your internet, or it may not be switched on yet.' : 'The assistant is not switched on yet.';
+      throw new Error(msg);
+    }
+    if (!data || !data.reply) throw new Error('The assistant did not answer. Please try again.');
+    return data.reply;
+  }
+
+  return { init, available, signedIn, signUp, signIn, signOut, queueSync, queueProfile, flush, setStatus, chat };
 })();
