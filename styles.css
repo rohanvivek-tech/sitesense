@@ -933,3 +933,8 @@ button:disabled, .btn:disabled { cursor: not-allowed; }
 .lab-result .irr-new { font-size: 40px; }
 @media (max-width: 1000px) { .lab-grid { grid-template-columns: 1fr; } .lab-result { position: static; } }
 @media (max-width: 640px) { .lab-sliders { grid-template-columns: 1fr; } }
+
+/* budget check table: let long text wrap so every column stays on screen */
+.est-table td.num { white-space: normal; }
+.est-table td:nth-child(5) { min-width: 150px; max-width: 240px; }
+.est-table td:nth-child(4) { min-width: 170px; }
